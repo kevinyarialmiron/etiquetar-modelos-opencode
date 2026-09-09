@@ -150,7 +150,7 @@ if ! "$OPENCODE_BIN" --version >/dev/null 2>&1; then
 fi
 
 # --- obtener archivos (local si es un clone; si no, descarga desde GitHub) --
-files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh commands-modelos.md)
+files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh ordenar-favoritos.py commands-modelos.md)
 SRC="$SCRIPT_DIR/files"
 if [[ ! -d "$SRC" ]]; then
   command -v curl >/dev/null 2>&1 || err "no encuentro los archivos localmente y no hay curl para descargarlos. Cloná el repo o instalá curl."
@@ -173,6 +173,7 @@ plan=(
   "models-rank.json:$DATA/models-rank.json:644"
   "modelos.sh:$BIN/modelos.sh:755"
   "ordenar-favoritos.sh:$BIN/ordenar-favoritos.sh:755"
+  "ordenar-favoritos.py:$BIN/ordenar-favoritos.py:755"
   "commands-modelos.md:$CMDS/modelos.md:644"
 )
 

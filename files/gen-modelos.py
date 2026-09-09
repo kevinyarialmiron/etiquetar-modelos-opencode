@@ -46,8 +46,14 @@ def bin_opencode():
 
 def leer_verbose():
     """Parsea `opencode models --verbose` -> [(full_id, dict_metadata)]."""
-    out = subprocess.run([bin_opencode(), "models", "--verbose"],
-                         capture_output=True, text=True)
+    binoc = bin_opencode()
+    if os.name == "nt" and binoc.lower().endswith((".cmd", ".bat")):
+        # shim de npm: no es un exe directo; hay que ejecutarlo con shell
+        cmdline = " ".join(f'"{c}"' for c in [binoc, "models", "--verbose"])
+        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True)
+    else:
+        out = subprocess.run([binoc, "models", "--verbose"],
+                             capture_output=True, text=True)
     rows = []
     cur = None
     buf = []
@@ -116,9 +122,15 @@ def parse_medalla_actual(name):
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
     rules = {"override": {}, "niveles": {}}
     try:
-        rules = json.load(open(RULES))
+        rules = json.load(open(RULES, encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         print("[warn] rules no disponibles; solo usará medallas del config actual", file=sys.stderr)
     override = rules.get("override", {})
@@ -126,7 +138,7 @@ def main():
 
     config = {}
     try:
-        config = json.load(open(CONFIG))
+        config = json.load(open(CONFIG, encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         print("[warn] opencode.json no existe; se creará al aplicar", file=sys.stderr)
     provider_cfg = config.setdefault("provider", {})
@@ -150,10 +162,6 @@ def main():
 
             nivel = override.get(full_id, 0) or override.get(cfg_key, 0)
             if not nivel:
-                cur = modelos_config.get(cfg_key)
-                if isinstance(cur, dict):
-                    nivel = parse_medalla_actual(cur.get("name"))
-            if not nivel:
                 for lvl, pats in sorted(niveles.items(), key=lambda x: int(x[0])):
                     if not isinstance(pats, list):
                         continue
@@ -166,6 +174,13 @@ def main():
                             continue
                     if nivel:
                         break
+            # las reglas mandan; la medalla ya aplicada en opencode.json se
+            # conserva solo como fallback (ej: usuarios sin regla pero con
+            # nombre editado a mano)
+            if not nivel:
+                cur = modelos_config.get(cfg_key)
+                if isinstance(cur, dict):
+                    nivel = parse_medalla_actual(cur.get("name"))
 
             if prov == "ollama":
                 cost_out = 0.0
@@ -189,7 +204,7 @@ def main():
                 "contexto": ctx,
             })
 
-    with open(OUTDATA, "w") as f:
+    with open(OUTDATA, "w", encoding="utf-8") as f:
         json.dump({"modelos": rows}, f, ensure_ascii=False, indent=1)
 
     if "--apply" in sys.argv:
@@ -204,7 +219,7 @@ def main():
                 else:
                     entry = {"name": r["name"]}
                 modelos_config[cfg_key] = entry
-        json.dump(config, open(CONFIG, "w"), ensure_ascii=False, indent=2)
+        json.dump(config, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         open(CONFIG, "a").write("\n")
         print(f"[apply] opencode.json actualizado ({len(rows)} modelos)")
     else:

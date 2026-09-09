@@ -1,12 +1,15 @@
 # Etiquetar Modelos de OpenCode
 
 Etiqueta automáticamente **todos los modelos** del selector `/models` de [OpenCode](https://opencode.ai)
+(los ~500 visibles: openrouter, opencode, opencode-go, google, deepseek, ollama)
 con su **calidad** y su **costo por 1M de tokens**, y ordena la pestaña **Favoritos**
 por calidad y precio. Con dos comandos tenés el picker legible de una vez.
 
+Funciona en **Linux, macOS, WSL y Windows** (terminal y app de escritorio).
+
 ## Qué hace
 
-- **496 modelos** (openrouter, opencode, opencode-go, google, deepseek, ollama) etiquetados al instante.
+- **~500 modelos** etiquetados al instante (todo lo que tu opencode "ve").
 - **Calidad**: ⭐🥇 nivel 1 (más confiable) · 🥈 nivel 2 · 🥉 nivel 3 · 🏅 nivel 4 · *sin medalla = evitar*.
 - **Costo** (salida por 1M tokens): 🌱 gratis · 🪙 centavos · ❶ $1-2 · ❷ $2-3 · … · ❺❗ $5-6 · ❿❗ ≥$10.
 - **`/modelos`**: un comando del TUI para listar modelos por calidad, precio o contexto.
@@ -29,27 +32,44 @@ Después:
 🥉🌱 Nemotron 3.5 Lightning (free)
 ```
 
+¿Cómo se decide cada etiqueta? Está explicado a fondo en
+[`METODOLOGIA.md`](METODOLOGIA.md): el baremo de calidad es un ranking curado (no
+un benchmark), el costo sale del catálogo oficial de OpenCode, y ambos son editables.
+
 ## Requisitos
 
-- OpenCode instalado (Linux, macOS o WSL). Si no lo tenés: `curl -fsSL https://opencode.ai/install | bash`
-- `python3`
+- **Linux/macOS/WSL:** OpenCode instalado + `python3`.
+- **Windows:** OpenCode (terminal o app de escritorio) + Python (desde [python.org](https://python.org)).
 - Red (para el catálogo de costos la primera vez).
 
 > **WSL con opencode de Windows:** si en WSL el instalador detecta que el `opencode`
 > visible es el de Windows (ruta `/mnt/c/...npm/...`), en modo `aplica` descarga e
 > instala automáticamente el opencode **nativo de Linux** en `~/.opencode/bin`
 > (sin tocar el de Windows) y etiqueta la config de Linux con el catálogo completo.
-> No tenés que desinstalar nada en Windows.
 
 ## Instalación
 
-### Ruta rápida (una línea)
+### Linux / macOS / WSL
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kevinyarialmiron/etiquetar-modelos-opencode/main/instalar.sh | bash -s aplica -y
 ```
 
 `-y` aplica los nombres **y** reordena los Favoritos sin preguntar.
+
+### Windows (PowerShell)
+
+Desde **PowerShell (5.1+) o Windows Terminal**:
+
+```powershell
+# descarga el instalador y lo ejecuta
+irm https://cdn.jsdelivr.net/gh/kevinyarialmiron/etiquetar-modelos-opencode@main/instalar.ps1 -OutFile "$env:TEMP\instalar-opencode.ps1"
+& "$env:TEMP\instalar-opencode.ps1" -aplica -yes
+```
+
+Detecta opencode (binario nativo, shim npm o app de escritorio) y Python, copia los
+archivos a `%USERPROFILE%\.config\opencode` y aplica. En Windows la config global es
+la misma para **terminal y app de escritorio**, así que las etiquetas se ven en ambos.
 
 ### Ruta transparente (clonar y correr)
 
@@ -70,6 +90,16 @@ cd etiquetar-modelos-opencode
 | `./instalar.sh aplica -n` | Aplica sin reordenar Favoritos |
 | `./instalar.sh --dry-run` | Muestra qué haría sin escribir nada |
 
+### Modos de `instalar.ps1`
+
+| Comando | Qué hace |
+|---|---|
+| `.\instalar.ps1` | Copia los archivos y muestra preview del dataset |
+| `.\instalar.ps1 -aplica` | Aplica los nombres (pregunta por Favoritos) |
+| `.\instalar.ps1 -aplica -yes` | Aplica y reordena Favoritos sin preguntar |
+| `.\instalar.ps1 -aplica -noFavoritos` | Aplica solo los nombres |
+| `.\instalar.ps1 -dryRun` | Muestra qué haría sin escribir nada |
+
 Siempre crea un backup de `opencode.json` (`.bak-etiquetas-<fecha>`) antes de aplicar.
 
 ## Personalizar la calidad
@@ -81,23 +111,47 @@ define qué nivel tiene cada modelo. Tiene dos secciones:
 - `niveles`: patrones regex por nivel (`"gemini-3\\.(6|7|8)-flash"` → nivel 2).
 
 Si querés que un modelo suba/baje de nivel, editá ese JSON y volvé a correr
-`instalar.sh aplica`.
+`instalar.sh aplica` (o en Windows `instalar.ps1 -aplica -yes`). Las reglas del
+ranking tienen prioridad sobre las etiquetas ya aplicadas, así el cambio se refleja.
 
 ## Estructura
 
 ```
 etiquetar-modelos-opencode/
-├── instalar.sh               # instalador (autónomo, descarga files/ si es por pipe)
+├── instalar.sh               # instalador bash (autónomo, descarga files/ si es por pipe)
+├── instalar.ps1              # instalador PowerShell (Windows, con retry + fallback CDN)
+├── METODOLOGIA.md            # cómo se decide cada etiqueta (baremo, costo, fiabilidad)
 ├── PROMPT.md                 # para instalación guiada por IA en otra instancia
+├── LICENSE                   # MIT
 └── files/
     ├── gen-modelos.py        # genera las etiquetas (--apply para escribir opencode.json)
     ├── models-rank.json      # reglas de calidad (editable)
     ├── modelos.sh            # backend del comando /modelos
-    ├── ordenar-favoritos.sh  # reordena la pestaña Favoritos
+    ├── ordenar-favoritos.sh  # wrapper del reorder de Favoritos
+    ├── ordenar-favoritos.py  # reorder portable (Linux/macOS/Windows), solo lista favorite
     └── commands-modelos.md   # definición del slash-command /modelos
 ```
 
 ## FAQ
+
+**¿Cómo se valora la calidad? ¿Sale de un benchmark?**
+No. Es un ranking curado a mano (en `models-rank.json`), con `override` por ID y
+patrones regex por familia, calibrado con uso real. No hay una "puntuación" numérica
+ni un baremo automático (ver [`METODOLOGIA.md`](METODOLOGIA.md)).
+
+**¿Qué ratio de fiabilidad tiene?**
+No existe tal número. La medallita es una opinión informada y editable: son **tus**
+modelos, cambiá el JSON y regenerá. Calidad y costo son dos ejes independientes que
+no se mezclan en una sola fórmula.
+
+**¿Funciona en Windows? ¿Y en la app de escritorio?**
+Sí. `instalar.ps1` instala todo en `%USERPROFILE%\.config\opencode\opencode.json`,
+config global compartida por la **terminal y la app de escritorio** de OpenCode, así
+que las etiquetas se ven en ambas. También funciona reordenar Favoritos en Windows.
+
+**¿Aplica para todos los proveedores?**
+Sí, exactamente los que tu instancia tiene configurados/autenticados (openrouter,
+opencode, google, deepseek, ollama, etc.). Si un proveedor no está activo, no aparece.
 
 **¿Toca mis credenciales o config?**
 No. Solo agrega/renombra la entrada `name` de cada modelo en `provider.*.models.*`
@@ -106,19 +160,21 @@ y crea `commands/modelos.md`. Nunca lee ni escribe tokens.
 **¿Rompe algo?** No. Hace backup antes de aplicar y es idempotente: si lo volvés a
 correr, reemplaza los nombres sin duplicar prefijos.
 
-**¿Y si no tengo todos los proveedores?** Etiqueta solo los que tu opencode ve en
-`opencode models` (los que están autenticados/configurados).
-
-**¿Por qué veo pocos modelos (ej. ~69 en vez de 400+)?** Suele pasar en WSL cuando
+**¿Por qué veo pocos modelos (ej. ~69 en vez de ~500)?** Suele pasar en WSL cuando
 el `opencode` del PATH es el de **Windows** (npm en `/mnt/c/...`): el catálogo sale
 de esa config, no de la de Linux. El instalador detecta el caso y, en `aplica`,
-instala el opencode nativo de Linux y usa ese binario — con lo que el catálogo pasa
-a ser el completo de tu Linux. Si ya aplicaste con el binario equivocado, corré de
-nuevo: `./instalar.sh aplica -y`.
+instala el opencode nativo de Linux y usa ese binario. Si ya aplicaste con el
+binario equivocado, corré de nuevo: `./instalar.sh aplica -y`.
 
 **¿Los costos son exactos?** Vienen del catálogo de OpenCode (`--verbose`); son
-referenciales y cambian. Regenerá cuando quieras con `gen-modelos.py --apply`.
+referenciales y cambian. Regenerá cuando quieras con `gen-modelos.py --apply`
+(o `instalar.ps1 -aplica`).
+
+**¿Por qué mis Favoritos no cambian al instalar?**
+Reordenar la pestaña Favoritos toca el estado (`~/.local/state/opencode/model.json`)
+que OpenCode mantiene en memoria: cerrá el TUI, corré la instalación o
+`ordenar-favoritos.sh`, y volvé a abrirlo. Recientes y selección actual no se tocan.
 
 ## Licencia
 
-Sin licencia: el código puede verse y descargarse, pero no redistribuirse.
+[MIT](LICENSE). Podés verlo, descargarlo, usarlo y redistribuirlo.

@@ -1,6 +1,7 @@
 {
   "override": {
     "openrouter/deepseek/deepseek-v4-flash": 1,
+    "openrouter/deepseek/deepseek-v3.1-terminus": 2,
     "openrouter/deepseek/deepseek-v4-pro": 1,
     "openrouter/deepseek/deepseek-v4-flash-0731": 2,
     "openrouter/openrouter/auto": 2,
@@ -25,6 +26,7 @@
     "opencode/nemotron-3-ultra-free": 4,
     "opencode/kimi-k2.5": 4,
     "opencode-go/mimo-v2.5": 1,
+    "opencode-go/gpt-5.6-luna": 1,
     "opencode-go/deepseek-v4-pro": 2,
     "opencode-go/deepseek-v4-flash": 2,
     "opencode-go/glm-5.3-flash": 2,
@@ -48,7 +50,7 @@
     "1": [
       "claude-opus-5",
       "claude-sonnet-5",
-      "gpt-5\\.[2-9]",
+      "gpt-5\\.[2-9](?!.*-(nano|mini|flash))",
       "gpt-5\\.6",
       "gpt-5\\.7",
       "gemini-3\\.(5|6|7|8)-pro",
@@ -60,6 +62,7 @@
       "qwen3-next-480b"
     ],
     "2": [
+      "gpt-5\\.[2-9]-(nano|mini|flash)",
       "deepseek-v4",
       "gpt-5\\.1",
       "gpt-5-codex",
