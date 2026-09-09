@@ -1,0 +1,16 @@
+{
+  "actualizado": "2026-09-09T00:00:00Z",
+  "proveedor": "nvidia",
+  "vivos": [
+    "nvidia/moonshotai/kimi-k3",
+    "nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+    "nvidia/nvidia/llama-nemotron-embed-vl-1b-v2"
+  ],
+  "muertos": {
+    "nvidia/nvidia/nv-embed-v1": "410",
+    "nvidia/nvidia/nemotron-mini-4b-instruct": "410",
+    "nvidia/nvidia/flux_1": "404",
+    "nvidia/openai/whisper-large-v3": "404",
+    "nvidia/nvidia/studiovoice": "410"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "provider": {
+    "openrouter": {
+      "models": {
+        "anthropic/claude-opus-4.0": {"name": "Claude Opus 4.0"},
+        "anthropic/claude-sonnet-4.0": {"name": "Claude Sonnet 4.0"},
+        "deepseek/deepseek-v4-pro": {"name": "DeepSeek V4 Pro"},
+        "mistralai/mistral-small-3.2": {"name": "🥈 Mistral Small 3.2"}
+      }
+    },
+    "google": {"models": {}},
+    "deepseek": {"models": {}},
+    "ollama": {"models": {}},
+    "opencode": {"models": {}},
+    "nvidia": {
+      "models": {
+        "nvidia/nemotron-mini-4b-instruct": {"name": "Nemotron Mini 4B"}
+      }
+    }
+  }
+}

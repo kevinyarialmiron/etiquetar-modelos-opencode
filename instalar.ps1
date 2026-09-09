@@ -9,6 +9,8 @@
 .PARAMETER yes       Aplica y reordena Favoritos sin preguntar (-aplica -yes).
 .PARAMETER noFavoritos  Aplica sin reordenar Favoritos.
 .PARAMETER dryRun    Muestra que haria sin escribir nada.
+.PARAMETER noWatcher Plural/singular: en Windows no hay cron. Definir $env:INSTALAR_NO_CRON=1
+                     omite la programacion del watcher (se corre manualmente con watch-etiquetas.sh).
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File instalar.ps1 -aplica -yes
 .NOTES
@@ -104,7 +106,8 @@ if ($Oc -match '\.(cmd|bat)$') {
 
 # descargar archivos (local si hay clone) ------------------------------
 $files = @("gen-modelos.py", "models-rank.json", "modelos.sh",
-           "ordenar-favoritos.sh", "ordenar-favoritos.py", "commands-modelos.md")
+           "ordenar-favoritos.sh", "ordenar-favoritos.py", "commands-modelos.md",
+           "probe-nvidia.py", "nvidia-muertos.json", "watch-etiquetas.sh")
 
 $SRC = Join-Path $PSScriptRoot "files"
 if (-not (Test-Path $SRC)) {
@@ -139,6 +142,9 @@ $copyPlan = @{
   "ordenar-favoritos.sh" = Join-Path $BIN  "ordenar-favoritos.sh"
   "ordenar-favoritos.py" = Join-Path $BIN  "ordenar-favoritos.py"
   "commands-modelos.md"  = Join-Path $CMDS "modelos.md"
+  "probe-nvidia.py"      = Join-Path $BIN  "probe-nvidia.py"
+  "nvidia-muertos.json"  = Join-Path $DATA "nvidia-muertos.json"
+  "watch-etiquetas.sh"   = Join-Path $BIN  "watch-etiquetas.sh"
 }
 foreach ($k in $copyPlan.Keys) {
   Copy-Item (Join-Path $SRC $k) $copyPlan[$k] -Force

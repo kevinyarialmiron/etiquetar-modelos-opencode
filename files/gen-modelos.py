@@ -28,10 +28,12 @@ import sys
 CONFIG = os.path.expanduser("~/.config/opencode/opencode.json")
 RULES = os.path.expanduser("~/.config/opencode/data/models-rank.json")
 OUTDATA = os.path.expanduser("~/.config/opencode/data/modelos.json")
+MUERTOS = os.path.expanduser("~/.config/opencode/data/nvidia-muertos.json")
 
 COST_EMOJI = ["🌱", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾"]
 MEDAL = {1: "🥇", 2: "🥈", 3: "🥉", 4: "🏅"}
-EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿"
+TIPO_EMOJI = {"chat": "", "embed": "🧩", "imagen": "🖼️", "audio": "🎙️", "otro": "🧩"}
+EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️⛔"
 
 
 def bin_opencode():
@@ -121,6 +123,45 @@ def parse_medalla_actual(name):
     return 0
 
 
+def detect_tipo(meta):
+    """Clasifica chat/embed/imagen/audio a partir de las capabilities del verbose."""
+    cap = meta.get("capabilities") or {}
+    out = cap.get("output") or {}
+    inp = cap.get("input") or {}
+    if out.get("image"):
+        return "imagen"
+    if out.get("audio") or (inp.get("audio") and not cap.get("temperature")):
+        return "audio"
+    if cap.get("temperature") or cap.get("toolcall") or "chat" in str(meta.get("model", "")):
+        return "chat"
+    return "embed"
+
+
+def cargar_muertos():
+    try:
+        data = json.load(open(MUERTOS, encoding="utf-8"))
+        return data.get("muertos", {}) or {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def es_oculto(full_id, muertos, ocultar_patrones):
+    if full_id in muertos:
+        return True
+    for pat in ocultar_patrones:
+        try:
+            if re.search(pat, full_id, re.I):
+                return True
+        except re.error:
+            continue
+    return False
+
+
+def base_original(cfg_key, cur_name, name_by_meta):
+    return strip_emojis(cur_name) or strip_emojis(name_by_meta) or \
+        cfg_key.split("/")[-1].replace("-", " ").title()
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -135,6 +176,8 @@ def main():
         print("[warn] rules no disponibles; solo usará medallas del config actual", file=sys.stderr)
     override = rules.get("override", {})
     niveles = rules.get("niveles", {})
+    ocultar_patrones = rules.get("ocultar", []) or []
+    muertos = cargar_muertos()
 
     config = {}
     try:
@@ -154,11 +197,14 @@ def main():
         meta_by_full[full_id] = meta
 
     rows = []
+    n_ocultos = 0
     for prov, ids in sorted(visibles.items()):
         modelos_config = provider_cfg.get(prov, {}).get("models", {})
         for cfg_key in sorted(ids):
             full_id = f"{prov}/{cfg_key}"
             name_by_meta, cost_out, ctx = meta_util(meta_by_full.get(full_id, {}))
+            tipo = detect_tipo(meta_by_full.get(full_id, {}))
+            oculto = es_oculto(full_id, muertos, ocultar_patrones)
 
             nivel = override.get(full_id, 0) or override.get(cfg_key, 0)
             if not nivel:
@@ -188,16 +234,20 @@ def main():
             ceil = cost_emoji(cost_out)
             cur_name = modelos_config.get(cfg_key) if isinstance(modelos_config, dict) else None
             cur_name = cur_name.get("name") if isinstance(cur_name, dict) else None
-            base = strip_emojis(cur_name) or strip_emojis(name_by_meta) or \
-                cfg_key.split("/")[-1].replace("-", " ").title()
+            base = base_original(cfg_key, cur_name, name_by_meta)
             star = "⭐" if nivel == 1 else ""
             medalla = MEDAL.get(nivel, "")
-            prefijo = f"{star}{medalla}{ceil}".strip()
+            tag = TIPO_EMOJI.get(tipo, "")
+            if oculto:
+                n_ocultos += 1
+                continue
+            prefijo = f"{star}{medalla}{tag}{ceil}".strip()
             name_final = (prefijo + " " + base).strip() if prefijo else base
 
             rows.append({
                 "provider": prov,
                 "id": full_id,
+                "tipo": tipo,
                 "name": name_final,
                 "nivel": nivel,
                 "cost_out": round(cost_out, 3) if cost_out is not None else None,
@@ -208,11 +258,21 @@ def main():
         json.dump({"modelos": rows}, f, ensure_ascii=False, indent=1)
 
     if "--apply" in sys.argv:
+        n_ocultos_aplicados = 0
         for prov, ids in sorted(visibles.items()):
             pm = provider_cfg.setdefault(prov, {})
             modelos_config = pm.setdefault("models", {})
             for cfg_key in ids:
-                r = next(x for x in rows if x["provider"] == prov and x["id"] == f"{prov}/{cfg_key}")
+                full_id = f"{prov}/{cfg_key}"
+                if es_oculto(full_id, muertos, ocultar_patrones):
+                    entry = modelos_config.get(cfg_key)
+                    if isinstance(entry, dict) and strip_emojis(entry.get("name")):
+                        base = base_original(cfg_key, entry.get("name"),
+                                             meta_util(meta_by_full.get(full_id, {}))[0])
+                        entry["name"] = f"⛔ {base}"
+                        n_ocultos_aplicados += 1
+                    continue
+                r = next(x for x in rows if x["provider"] == prov and x["id"] == full_id)
                 entry = modelos_config.get(cfg_key)
                 if isinstance(entry, dict):
                     entry["name"] = r["name"]
@@ -221,11 +281,11 @@ def main():
                 modelos_config[cfg_key] = entry
         json.dump(config, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         open(CONFIG, "a").write("\n")
-        print(f"[apply] opencode.json actualizado ({len(rows)} modelos)")
+        print(f"[apply] opencode.json actualizado ({len(rows)} modelos | {n_ocultos} ocultos | {n_ocultos_aplicados} marcados ⛔)")
     else:
         from collections import Counter
         c = Counter(r["provider"] for r in rows)
-        print("[preview] total:", len(rows), "| por provider:", dict(c))
+        print("[preview] total:", len(rows), "| ocultos:", n_ocultos, "| por provider:", dict(c))
         for r in rows[:20]:
             print(f"  {r['id']:<46} -> {r['name']}")
 

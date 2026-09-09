@@ -1,0 +1,14 @@
+{
+  "override": {
+    "openrouter/anthropic/claude-opus-4.0": 1,
+    "openrouter/anthropic/claude-sonnet-4.0": 2,
+    "openrouter/deepseek/deepseek-v4-pro": 1
+  },
+  "niveles": {
+    "1": ["kimi-k3$", "anthropic/claude-4"],
+    "2": ["gpt-5-nano$", "deepseek-v3\\.1-terminus$", "deepseek-v4"],
+    "3": ["gemini-3-flash", "gemini-2\\.5-pro$", "nemotron-3\\.5"],
+    "4": ["nemotron-3-ultra"]
+  },
+  "ocultar": ["openrouter/.*/mistral-large-3\\.5"]
+}

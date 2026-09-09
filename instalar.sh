@@ -150,7 +150,7 @@ if ! "$OPENCODE_BIN" --version >/dev/null 2>&1; then
 fi
 
 # --- obtener archivos (local si es un clone; si no, descarga desde GitHub) --
-files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh ordenar-favoritos.py commands-modelos.md)
+files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh ordenar-favoritos.py commands-modelos.md probe-nvidia.py nvidia-muertos.json watch-etiquetas.sh)
 SRC="$SCRIPT_DIR/files"
 if [[ ! -d "$SRC" ]]; then
   command -v curl >/dev/null 2>&1 || err "no encuentro los archivos localmente y no hay curl para descargarlos. Cloná el repo o instalá curl."
@@ -175,7 +175,32 @@ plan=(
   "ordenar-favoritos.sh:$BIN/ordenar-favoritos.sh:755"
   "ordenar-favoritos.py:$BIN/ordenar-favoritos.py:755"
   "commands-modelos.md:$CMDS/modelos.md:644"
+  "probe-nvidia.py:$BIN/probe-nvidia.py:755"
+  "nvidia-muertos.json:$DATA/nvidia-muertos.json:644"
+  "watch-etiquetas.sh:$BIN/watch-etiquetas.sh:755"
 )
+
+# cron del watcher automático (idempotente): regenera etiquetas cada 5 min si
+# cambió auth.json/opencode.json/models-rank.json/nvidia-muertos.json.
+# INSTALAR_NO_CRON=1 lo desactiva (útil en tests / entornos sin servicio cron).
+install_watcher() {
+  if [[ -n "${INSTALAR_NO_CRON:-}" ]]; then
+    echo "[instalar] (watcher cron omitido por INSTALAR_NO_CRON=1)"
+    return 0
+  fi
+  if ! command -v cron >/dev/null 2>&1 && ! command -v crond >/dev/null 2>&1; then
+    echo "[instalar] (no hay cron; el watcher no se programa automáticamente)"
+    return 0
+  fi
+  local line="*/5 * * * * $BIN/watch-etiquetas.sh >/dev/null 2>&1"
+  if ! crontab -l 2>/dev/null | grep -Fq "$BIN/watch-etiquetas.sh"; then
+    ( crontab -l 2>/dev/null || true; echo "$line" ) | crontab -
+    echo "[instalar] watcher programado en cron (cada 5 min):"
+    echo "          $line"
+  else
+    echo "[instalar] watcher ya estaba en cron"
+  fi
+}
 
 echo "[instalar] modo: $MODE"
 if [[ -z "$DRY" ]]; then
@@ -194,6 +219,8 @@ if [[ -z "$DRY" ]]; then
     cp "$CONFIG" "$CONFIG.bak-etiquetas-$ts"
     echo "[instalar] backup: $CONFIG.bak-etiquetas-$ts"
   fi
+
+  install_watcher
 
   if [[ $MODE == "aplica" ]]; then
     echo "[instalar] aplicando etiquetas a opencode.json (binario: $OPENCODE_BIN)..."

@@ -54,12 +54,44 @@ inventa ni se cachea en el repo; se lee en vivo al generar. Detalles:
 - Los precios cambian con los proveedores: regenerá cuando quieras con
   `python3 ~/.config/opencode/bin/gen-modelos.py --apply`.
 
+## Tipo: chat, embed, imagen, audio
+
+Cada modelo se clasifica por sus `capabilities` del catálogo y eso se muestra como
+tag en el nombre (solo los no-chat, para no ensuciar los que se usan de a diario):
+
+- (sin tag) — **chat** (incluye vision/razonamiento de chat).
+- 🧩 — **embed** (embeddings, rerank, safety, código de otro dominio).
+- 🖼️ — **imagen** (generación).
+- 🎙️ — **audio** (TTS/STT/transcripción).
+
+El campo `tipo` se guarda además en `data/modelos.json` y lo muestra `/modelos`.
+
+## Modelos muertos/deprecados: se ocultan, no se marcan como confiables
+
+El catálogo de NVIDIA (`opencode models --verbose`) lista sus modelos con
+`status: active` **aún después de retirarlos**: al llamarlos dan `410 Gone`
+("end of life") o `404`. Una etiqueta bonita ahí sería una trampa. Por eso:
+
+- `probe-nvidia.py` sondea la API real de NVIDIA con un request mínimo por modelo
+  (respeta la key de `~/.local/share/opencode/auth.json`, sin imprimirla) y guarda
+  el resultado en `~/.config/opencode/data/nvidia-muertos.json`.
+- `gen-modelos.py` **oculta** todo lo que está en ese archivo: no aparece en
+  `data/modelos.json` (ni en `/modelos` ni en Favoritos) y no se etiqueta. Si un
+  modelo ya estaba etiquetado y muere, se vuelve a nombrar `⛔ <nombre>` para que
+  se vea que está fuera de servicio.
+- Regla de conservadurismo: un **timeout** (cold start de hasta 120 s en NVIDIA) no
+  degrada a un modelo ya confirmado vivo; solo un 4xx/5xx definitivo lo esconde.
+- `models-rank.json` admite una sección `ocultar` con IDs exactos o regex para
+  esconder modelos a mano (cualquier proveedor).
+
 ## Proveedores: se etiqueta lo que tu opencode "ve"
 
 `opencode models --verbose` lista los modelos de los proveedores que tu instancia
 tiene **configurados/autenticados** (openrouter, opencode, google, deepseek,
-ollama, etc.). La herramienta etiqueta **todo eso**, en cualquier combinación. Si
-un proveedor no está activo, sus modelos no aparecen — y no se etiquetan.
+ollama, **nvidia**, etc.). La herramienta etiqueta **todo eso**, en cualquier
+combinación. Si un proveedor no está activo, sus modelos no aparecen — y no se
+etiquetan. Un proveedor nuevo que agregues a `auth.json`/`opencode.json` se detecta
+solo (y el watcher lo vuelve a detectar en ≤5 min).
 
 ## Windows (terminal y desktop)
 

@@ -44,9 +44,21 @@ descrito abajo desde cero (también válido).
 - `$1–2` → ❶ · `$2–3` → ❷ · `$3–4` → ❸ · `$4–5` → ❹ · `$5–6` → ❺❗ · … · `≥$10` → ❿❗
 - Todo precio >$5 lleva ❗.
 
-**Escala de calidad** (hasta 3 emojis por nombre):
+**Escala de calidad** (hasta 3-4 emojis por nombre):
 - Nivel 1 → `⭐🥇<costo> Nombre` · Nivel 2 → `🥈<costo> Nombre` · Nivel 3 → `🥉<costo> Nombre`
 - Nivel 4 → `🏅<costo> Nombre` · Sin medalla (evitar) → `<costo> Nombre`.
+
+**Tipo** (solo no-chat): `🧩` embed · `🖼️` imagen · `🎙️` audio, entre la medalla y el
+costo (ej. `🥉🎙️❿❗ Gemini 2.5 Flash Preview TTS`). Se clasifica por las
+`capabilities` del catálogo.
+
+**Modelos muertos**: los que están en `data/nvidia-muertos.json` (generado por
+`bin/probe-nvidia.py`, que sondea la API real de NVIDIA) se **ocultan**: no salen
+en `data/modelos.json` ni se etiquetan; si ya tenían etiqueta, se renombran `⛔ Nombre`.
+`models-rank.json` admite `ocultar` con IDs/regex para esconder a mano.
+
+**Watcher**: `bin/watch-etiquetas.sh` (cron `*/5`) regenera `--apply` solo si cambió
+`auth.json`, `opencode.json`, `models-rank.json`, `nvidia-muertos.json` o el script.
 
 **Fuente**: `opencode models --verbose` (IDs visibles + costos nativos por
 proveedor; ollama siempre gratis).

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Shim de `opencode` para la suite de tests: responde `models --verbose` con un
+# catálogo fijo (tests/fixtures/verbose.txt) sin tocar la red ni la config real.
+set -euo pipefail
+
+case "${1:-}" in
+  --version)
+    echo "opencode-test-shim v1"
+    exit 0
+    ;;
+  models)
+    if [ "${2:-}" = "--verbose" ]; then
+      verbose="${SHIM_VERBOSE_FILE:?SHIM_VERBOSE_FILE sin definir}"
+      cat "$verbose"
+      exit 0
+    fi
+    ;;
+esac
+
+echo "shim: llamada no manejada: $*" >&2
+exit 2

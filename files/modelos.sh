@@ -47,10 +47,11 @@ niv = Counter(r["nivel"] for r in rows)
 print(f"== /modelos ({len(rows)} modelos) ==")
 print(f"   ⭐🥇={niv[1]}  🥈={niv[2]}  🥉={niv[3]}  🏅={niv[4]}  sin-medalla={niv[0]}")
 print()
-print(f"{'NIVEL':<6}{'PROVEEDOR':<12}{'COSTO($/1M)':<12}{'CTX':<10}MODELO")
+print(f"{'NIVEL':<6}{'TIPO':<8}{'PROVEEDOR':<12}{'COSTO($/1M)':<12}{'CTX':<10}MODELO")
 for r in rows:
     costo = "—" if r["cost_out"] is None else f"{r['cost_out']:g}"
     ctx = "—" if not r["contexto"] else f"{r['contexto']:,}"
     lvl = {1:"⭐🥇",2:"🥈",3:"🥉",4:"🏅"}.get(r["nivel"],"—")
-    print(f"{lvl:<6}{r['provider']:<12}{costo:<12}{ctx:<10}{r['name']}")
+    tipo = {"chat":"chat","embed":"🧩","imagen":"🖼️","audio":"🎙️"}.get(r.get("tipo"),"—")
+    print(f"{lvl:<6}{tipo:<8}{r['provider']:<12}{costo:<12}{ctx:<10}{r['name']}")
 EOF

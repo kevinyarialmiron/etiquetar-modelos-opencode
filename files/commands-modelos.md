@@ -1,5 +1,5 @@
 ---
-description: Lista modelos con etiquetas de calidad y costo, ordenados (calidad, precio o contexto). Ej: /modelos, /modelos barato, /modelos openrouter barato
+description: Lista modelos con etiquetas de calidad, costo y tipo, ordenados (calidad, precio o contexto). Ej: /modelos, /modelos barato, /modelos openrouter barato
 agent: build
 ---
 
@@ -10,3 +10,4 @@ Si `$ARGUMENTS` está vacío, ejecutá `~/.config/opencode/bin/modelos.sh`.
 Reglas:
 - No interpretar, no modificar, no filtrar la salida del script.
 - Si el script falla, mostrá su stderr.
+- La columna TIPO usa: chat (vacío) / 🧩 embed / 🖼️ imagen / 🎙️ audio.

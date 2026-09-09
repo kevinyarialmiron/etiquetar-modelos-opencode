@@ -1,7 +1,8 @@
 # Etiquetar Modelos de OpenCode
 
 Etiqueta automáticamente **todos los modelos** del selector `/models` de [OpenCode](https://opencode.ai)
-(los ~500 visibles: openrouter, opencode, opencode-go, google, deepseek, ollama)
+(los ~500 visibles: openrouter, opencode, opencode-go, google, deepseek, ollama,
+nvidia y cualquier proveedor que tu instancia autentique)
 con su **calidad** y su **costo por 1M de tokens**, y ordena la pestaña **Favoritos**
 por calidad y precio. Con dos comandos tenés el picker legible de una vez.
 
@@ -12,6 +13,12 @@ Funciona en **Linux, macOS, WSL y Windows** (terminal y app de escritorio).
 - **~500 modelos** etiquetados al instante (todo lo que tu opencode "ve").
 - **Calidad**: ⭐🥇 nivel 1 (más confiable) · 🥈 nivel 2 · 🥉 nivel 3 · 🏅 nivel 4 · *sin medalla = evitar*.
 - **Costo** (salida por 1M tokens): 🌱 gratis · 🪙 centavos · ❶ $1-2 · ❷ $2-3 · … · ❺❗ $5-6 · ❿❗ ≥$10.
+- **Tipo**: 🧩 embed · 🖼️ imagen · 🎙️ audio (los de chat no llevan tag).
+- **Esconde modelos deprecados/muertos**: `probe-nvidia.py` sondea la API real de NVIDIA
+  (que en sus catálogos dice `active` hasta en los que ya no existen) y graba
+  `nvidia-muertos.json`. Esos modelos salen del listado y no se etiquetan.
+- **Watcher automático**: si cambiás `auth.json`, `opencode.json` o `models-rank.json`,
+  se regeneran las etiquetas solas (cron de Linux/WSL cada 5 min).
 - **`/modelos`**: un comando del TUI para listar modelos por calidad, precio o contexto.
 - **Favoritos ordenados**: calidad ↓ y dentro de cada nivel precio ↓.
 - Fuente de verdad: `opencode models --verbose` (usa los costos del propio proveedor).
@@ -114,6 +121,37 @@ Si querés que un modelo suba/baje de nivel, editá ese JSON y volvé a correr
 `instalar.sh aplica` (o en Windows `instalar.ps1 -aplica -yes`). Las reglas del
 ranking tienen prioridad sobre las etiquetas ya aplicadas, así el cambio se refleja.
 
+También podés **ocultar** modelos a mano agregando su ID (o un regex) a la sección
+`ocultar` de `models-rank.json` (ej. `"ocultar": ["openrouter/foo/bar-model"]`).
+Los modelos en `nvidia-muertos.json` se suman a esa lista automáticamente.
+
+### Sondeo de modelos NVIDIA deprecados
+
+El catálogo de NVIDIA sale con `status: active` incluso en modelos que ya fueron
+retirados (410 `Gone` / 404). Para esconderlos:
+
+```bash
+python3 ~/.config/opencode/bin/probe-nvidia.py        # solo chat (rápido, suficiente para el picker)
+python3 ~/.config/opencode/bin/probe-nvidia.py --todo # embeddings, imagen y audio también
+```
+
+Usa la key de `~/.local/share/opencode/auth.json` (no la imprime), sondea cada modelo
+contra su endpoint real con un request mínimo y guarda `data/nvidia-muertos.json`.
+Un timeout nunca demuestra la muerte (cold start), por eso solo un 4xx/5xx definitivo
+esconde a un modelo ya confirmado. Después corré `gen-modelos.py --apply`.
+
+### Watcher automático (Linux/macOS/WSL)
+
+`instalar.sh` programa un cron cada 5 min que reejecuta `gen-modelos.py --apply`
+solo si cambió `auth.json`, `opencode.json`, `models-rank.json`, `nvidia-muertos.json`
+o el propio `gen-modelos.py`. Los cambios en el picker se ven al recargar opencode.
+
+```bash
+crontab -l   # ver la línea */5 * * * * ~/.config/opencode/bin/watch-etiquetas.sh
+# forzar una regeneración inmediata:
+~/.config/opencode/bin/watch-etiquetas.sh --force
+```
+
 ## Estructura
 
 ```
@@ -125,10 +163,13 @@ etiquetar-modelos-opencode/
 ├── LICENSE                   # MIT
 └── files/
     ├── gen-modelos.py        # genera las etiquetas (--apply para escribir opencode.json)
-    ├── models-rank.json      # reglas de calidad (editable)
+    ├── models-rank.json      # reglas de calidad + ocultar (editable)
     ├── modelos.sh            # backend del comando /modelos
     ├── ordenar-favoritos.sh  # wrapper del reorder de Favoritos
     ├── ordenar-favoritos.py  # reorder portable (Linux/macOS/Windows), solo lista favorite
+    ├── probe-nvidia.py       # sondea la API real de NVIDIA y escribe nvidia-muertos.json
+    ├── nvidia-muertos.json   # baseline de modelos NVIDIA que ya no responden (410/404/timeout)
+    ├── watch-etiquetas.sh    # watcher por cron (regenera si cambió algo relevante)
     └── commands-modelos.md   # definición del slash-command /modelos
 ```
 
@@ -159,6 +200,13 @@ y crea `commands/modelos.md`. Nunca lee ni escribe tokens.
 
 **¿Rompe algo?** No. Hace backup antes de aplicar y es idempotente: si lo volvés a
 correr, reemplaza los nombres sin duplicar prefijos.
+
+**¿Por qué algunos modelos de NVIDIA no se etiquetan / no aparecen en `/modelos`?**
+Porque ya no funcionan: el catálogo de OpenCode los lista como `active`, pero NVIDIA
+los retiró (dan `410 Gone` / `404` al llamarlos). `probe-nvidia.py` los detecta una
+vez por sondeo real y `nvidia-muertos.json` los esconde del listado y del etiquetado.
+En el picker `/models` quedan con su nombre original (sin etiquetas), nunca marcados
+como si funcionaran.
 
 **¿Por qué veo pocos modelos (ej. ~69 en vez de ~500)?** Suele pasar en WSL cuando
 el `opencode` del PATH es el de **Windows** (npm en `/mnt/c/...`): el catálogo sale
