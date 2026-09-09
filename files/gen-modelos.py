@@ -35,6 +35,9 @@ EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿"
 
 
 def bin_opencode():
+    env = os.environ.get("OPENCODE_BIN")
+    if env and os.path.exists(env):
+        return env
     p = os.path.expanduser("~/.opencode/bin/opencode")
     if os.path.exists(p):
         return p
@@ -127,6 +130,8 @@ def main():
     except (FileNotFoundError, json.JSONDecodeError):
         print("[warn] opencode.json no existe; se creará al aplicar", file=sys.stderr)
     provider_cfg = config.setdefault("provider", {})
+
+    print(f"[bin] opencode: {bin_opencode()}", file=sys.stderr)
 
     verbose = leer_verbose()
     visibles = {}

@@ -35,6 +35,12 @@ Después:
 - `python3`
 - Red (para el catálogo de costos la primera vez).
 
+> **WSL con opencode de Windows:** si en WSL el instalador detecta que el `opencode`
+> visible es el de Windows (ruta `/mnt/c/...npm/...`), en modo `aplica` descarga e
+> instala automáticamente el opencode **nativo de Linux** en `~/.opencode/bin`
+> (sin tocar el de Windows) y etiqueta la config de Linux con el catálogo completo.
+> No tenés que desinstalar nada en Windows.
+
 ## Instalación
 
 ### Ruta rápida (una línea)
@@ -102,6 +108,13 @@ correr, reemplaza los nombres sin duplicar prefijos.
 
 **¿Y si no tengo todos los proveedores?** Etiqueta solo los que tu opencode ve en
 `opencode models` (los que están autenticados/configurados).
+
+**¿Por qué veo pocos modelos (ej. ~69 en vez de 400+)?** Suele pasar en WSL cuando
+el `opencode` del PATH es el de **Windows** (npm en `/mnt/c/...`): el catálogo sale
+de esa config, no de la de Linux. El instalador detecta el caso y, en `aplica`,
+instala el opencode nativo de Linux y usa ese binario — con lo que el catálogo pasa
+a ser el completo de tu Linux. Si ya aplicaste con el binario equivocado, corré de
+nuevo: `./instalar.sh aplica -y`.
 
 **¿Los costos son exactos?** Vienen del catálogo de OpenCode (`--verbose`); son
 referenciales y cambian. Regenerá cuando quieras con `gen-modelos.py --apply`.
