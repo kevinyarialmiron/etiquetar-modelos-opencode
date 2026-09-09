@@ -33,7 +33,7 @@ MUERTOS = os.path.expanduser("~/.config/opencode/data/nvidia-muertos.json")
 COST_EMOJI = ["🌱", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾"]
 MEDAL = {1: "🥇", 2: "🥈", 3: "🥉", 4: "🏅"}
 TIPO_EMOJI = {"chat": "", "embed": "🧩", "imagen": "🖼️", "audio": "🎙️", "otro": "🧩"}
-EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️⛔"
+EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️💀"
 
 
 def bin_opencode():
@@ -266,11 +266,21 @@ def main():
                 full_id = f"{prov}/{cfg_key}"
                 if es_oculto(full_id, muertos, ocultar_patrones):
                     entry = modelos_config.get(cfg_key)
-                    if isinstance(entry, dict) and strip_emojis(entry.get("name")):
-                        base = base_original(cfg_key, entry.get("name"),
-                                             meta_util(meta_by_full.get(full_id, {}))[0])
-                        entry["name"] = f"⛔ {base}"
-                        n_ocultos_aplicados += 1
+                    cur = None
+                    if isinstance(entry, dict):
+                        cur = entry.get("name")
+                    elif isinstance(entry, str):
+                        cur = entry
+                    base = base_original(cfg_key, cur,
+                                         meta_util(meta_by_full.get(full_id, {}))[0])
+                    # todo muerto se marca con calavera: se crea la entrada aunque
+                    # no existiera antes para que el picker lo muestre claramente
+                    if isinstance(entry, dict):
+                        entry["name"] = f"💀 {base}"
+                    else:
+                        entry = {"name": f"💀 {base}"}
+                    modelos_config[cfg_key] = entry
+                    n_ocultos_aplicados += 1
                     continue
                 r = next(x for x in rows if x["provider"] == prov and x["id"] == full_id)
                 entry = modelos_config.get(cfg_key)
@@ -281,7 +291,7 @@ def main():
                 modelos_config[cfg_key] = entry
         json.dump(config, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         open(CONFIG, "a").write("\n")
-        print(f"[apply] opencode.json actualizado ({len(rows)} modelos | {n_ocultos} ocultos | {n_ocultos_aplicados} marcados ⛔)")
+        print(f"[apply] opencode.json actualizado ({len(rows)} modelos | {n_ocultos} ocultos | {n_ocultos_aplicados} marcados 💀)")
     else:
         from collections import Counter
         c = Counter(r["provider"] for r in rows)

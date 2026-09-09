@@ -16,7 +16,8 @@ Funciona en **Linux, macOS, WSL y Windows** (terminal y app de escritorio).
 - **Tipo**: 🧩 embed · 🖼️ imagen · 🎙️ audio (los de chat no llevan tag).
 - **Esconde modelos deprecados/muertos**: `probe-nvidia.py` sondea la API real de NVIDIA
   (que en sus catálogos dice `active` hasta en los que ya no existen) y graba
-  `nvidia-muertos.json`. Esos modelos salen del listado y no se etiquetan.
+  `nvidia-muertos.json`. Esos modelos salen del listado, no se etiquetan, y en el
+  picker `/models` quedan marcados `💀 Nombre` (la calavera = no funciona).
 - **Watcher automático**: si cambiás `auth.json`, `opencode.json` o `models-rank.json`,
   se regeneran las etiquetas solas (cron de Linux/WSL cada 5 min).
 - **`/modelos`**: un comando del TUI para listar modelos por calidad, precio o contexto.
@@ -137,8 +138,11 @@ python3 ~/.config/opencode/bin/probe-nvidia.py --todo # embeddings, imagen y aud
 
 Usa la key de `~/.local/share/opencode/auth.json` (no la imprime), sondea cada modelo
 contra su endpoint real con un request mínimo y guarda `data/nvidia-muertos.json`.
-Un timeout nunca demuestra la muerte (cold start), por eso solo un 4xx/5xx definitivo
-esconde a un modelo ya confirmado. Después corré `gen-modelos.py --apply`.
+Un timeout nunca demuestra la muerte (cold start), por eso solo un 4xx definitivo
+esconde a un modelo ya confirmado. Si quedaron modelos marcados timeout/5xx y
+querés resolverlos con datos, corré `python3 ~/.config/opencode/bin/probe-nvidia.py
+--dudosos` (los re-sondea con más paciencia; un 200 los pasa a vivos). Después
+corré `gen-modelos.py --apply`.
 
 ### Watcher automático (Linux/macOS/WSL)
 
@@ -167,8 +171,8 @@ etiquetar-modelos-opencode/
     ├── modelos.sh            # backend del comando /modelos
     ├── ordenar-favoritos.sh  # wrapper del reorder de Favoritos
     ├── ordenar-favoritos.py  # reorder portable (Linux/macOS/Windows), solo lista favorite
-    ├── probe-nvidia.py       # sondea la API real de NVIDIA y escribe nvidia-muertos.json
-    ├── nvidia-muertos.json   # baseline de modelos NVIDIA que ya no responden (410/404/timeout)
+    ├── probe-nvidia.py       # sondea la API real de NVIDIA y escribe nvidia-muertos.json (--dudosos re-sondea timeout/5xx)
+    ├── nvidia-muertos.json   # baseline de NVIDIA que ya no responden (410/404; "timeout" = sin decidir)
     ├── watch-etiquetas.sh    # watcher por cron (regenera si cambió algo relevante)
     └── commands-modelos.md   # definición del slash-command /modelos
 ```
@@ -205,8 +209,8 @@ correr, reemplaza los nombres sin duplicar prefijos.
 Porque ya no funcionan: el catálogo de OpenCode los lista como `active`, pero NVIDIA
 los retiró (dan `410 Gone` / `404` al llamarlos). `probe-nvidia.py` los detecta una
 vez por sondeo real y `nvidia-muertos.json` los esconde del listado y del etiquetado.
-En el picker `/models` quedan con su nombre original (sin etiquetas), nunca marcados
-como si funcionaran.
+En el picker `/models` quedan con el nombre marcado `💀` delante, para que se vea a
+simple vista que están fuera de servicio y no se confundan con los que funcionan.
 
 **¿Por qué veo pocos modelos (ej. ~69 en vez de ~500)?** Suele pasar en WSL cuando
 el `opencode` del PATH es el de **Windows** (npm en `/mnt/c/...`): el catálogo sale

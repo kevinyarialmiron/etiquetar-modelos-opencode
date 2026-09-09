@@ -66,7 +66,7 @@ tag en el nombre (solo los no-chat, para no ensuciar los que se usan de a diario
 
 El campo `tipo` se guarda además en `data/modelos.json` y lo muestra `/modelos`.
 
-## Modelos muertos/deprecados: se ocultan, no se marcan como confiables
+## Modelos muertos/deprecados: se ocultan y se marcan con 💀
 
 El catálogo de NVIDIA (`opencode models --verbose`) lista sus modelos con
 `status: active` **aún después de retirarlos**: al llamarlos dan `410 Gone`
@@ -76,13 +76,16 @@ El catálogo de NVIDIA (`opencode models --verbose`) lista sus modelos con
   (respeta la key de `~/.local/share/opencode/auth.json`, sin imprimirla) y guarda
   el resultado en `~/.config/opencode/data/nvidia-muertos.json`.
 - `gen-modelos.py` **oculta** todo lo que está en ese archivo: no aparece en
-  `data/modelos.json` (ni en `/modelos` ni en Favoritos) y no se etiqueta. Si un
-  modelo ya estaba etiquetado y muere, se vuelve a nombrar `⛔ <nombre>` para que
-  se vea que está fuera de servicio.
-- Regla de conservadurismo: un **timeout** (cold start de hasta 120 s en NVIDIA) no
-  degrada a un modelo ya confirmado vivo; solo un 4xx/5xx definitivo lo esconde.
+  `data/modelos.json` (ni en `/modelos` ni en Favoritos) y no se etiqueta. Además,
+  en el picker `/models` **todo** modelo muerto se marca `💀 <nombre>` (se crea la
+  entrada aunque no existiera antes), para que se vea a simple vista que está
+  fuera de servicio y nunca se confunda con uno útil.
+- Regla de conservadurismo: un **timeout** (cold start de hasta 120-180 s en
+  NVIDIA) no degrada a un modelo ya confirmado vivo; solo un 4xx definitivo lo
+  esconde. Con `python3 bin/probe-nvidia.py --dudosos` los que quedaron marcados
+  timeout/5xx se re-sondean con más paciencia y se decide con datos (200 → vivo).
 - `models-rank.json` admite una sección `ocultar` con IDs exactos o regex para
-  esconder modelos a mano (cualquier proveedor).
+  esconder modelos a mano (cualquier proveedor); esos también se marcan `💀`.
 
 ## Proveedores: se etiqueta lo que tu opencode "ve"
 

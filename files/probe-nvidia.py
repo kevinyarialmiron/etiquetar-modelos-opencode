@@ -10,6 +10,7 @@ confiable de saber si un modelo responde es llamarlo.
 Uso:
     python3 probe-nvidia.py            # solo modelos de chat (rápido)
     python3 probe-nvidia.py --todo     # chat + embeddings + imagen (lento)
+    python3 probe-nvidia.py --dudosos  # re-sondea solo los timeout/5xx con mas paciencia
 
 Notas:
 - Lee la key de nvidia de ~/.local/share/opencode/auth.json (no la imprime).
@@ -33,6 +34,15 @@ BASE = "https://integrate.api.nvidia.com/v1"
 CONCURRENCIA = 6
 TIMEOUT = 20
 TIMEOUT_CHAT = 40
+# paciencia extra para el modo --dudosos (cold starts largos de NVIDIA)
+TIMEOUT_DUDOSO = 180
+INTENTOS_DUDOSO = 3
+
+
+def es_dudoso(estado):
+    """Un modelo es "dudoso" si un solo timeout/5xx lo tiene marcado y no fue
+    confirmado muerto con un 4xx definitivo (410 EOL/404)."""
+    return estado == "timeout" or (isinstance(estado, str) and estado[:1] == "5")
 
 
 def bin_opencode():
@@ -148,13 +158,85 @@ def probe(full_id, meta, key, solo_chat):
     return full_id, ultimo
 
 
+def probe_chat_paciente(full_id, key):
+    """Sondea SOLO el endpoint de chat de un modelo con mucha paciencia
+    (los cold starts de NVIDIA llegan a +120 s). Intenta INTENTOS_DUDOSO veces."""
+    model_id = full_id.split("/", 1)[1]
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    for i in range(INTENTOS_DUDOSO):
+        try:
+            r = requests.post(f"{BASE}/chat/completions",
+                              json={"model": model_id,
+                                    "messages": [{"role": "user", "content": "hi"}],
+                                    "max_tokens": 1},
+                              headers=headers, timeout=TIMEOUT_DUDOSO)
+            if r.status_code == 429 and i < INTENTOS_DUDOSO - 1:
+                time.sleep(3)
+                continue
+            detalle = (r.text or "").strip().replace("\n", " ")[:120]
+            return {"ok": r.status_code == 200, "http": r.status_code,
+                    "detalle": detalle}
+        except Exception as e:
+            ultimo = {"ok": False, "http": None, "timeout": True,
+                      "detalle": str(e)[:120]}
+            if i < INTENTOS_DUDOSO - 1:
+                time.sleep(2)
+    return ultimo
+
+
+def modo_dudosos(key):
+    """Re-sondea con paciencia los modelos que quedaron marcados timeout/5xx y
+    decide con datos: un 200 los pasa a vivos; un 4xx definitivo los confirma
+    muertos; un timeout/5xx repetido los deja como dudosos."""
+    try:
+        data = json.load(open(MUERTOS, encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {"vivos": [], "muertos": {}}
+    prev_muertos = data.get("muertos", {}) or {}
+    prev_vivos = set(data.get("vivos", []) or [])
+    dudosos = [mid for mid, st in sorted(prev_muertos.items()) if es_dudoso(st)]
+    if not dudosos:
+        print("[dudosos] no hay modelos dudosos pendientes", file=sys.stderr)
+        return
+
+    print(f"[dudosos] re-sondeando {len(dudosos)} modelos con paciencia "
+          f"({TIMEOUT_DUDOSO}s, hasta {INTENTOS_DUDOSO} intentos) ...", file=sys.stderr)
+    resultados = {}
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = {ex.submit(probe_chat_paciente, mid, key): mid for mid in dudosos}
+        for fut in as_completed(futs):
+            resultados[futs[fut]] = fut.result()
+
+    muertos = {mid: st for mid, st in prev_muertos.items() if not es_dudoso(st)}
+    vivos = list(prev_vivos)
+    for mid, res in sorted(resultados.items()):
+        if res.get("ok") is True:
+            vivos.append(mid)
+            print(f"  [+ vivo] {mid} ({res.get('detalle', '')})", file=sys.stderr)
+        elif res.get("http") in (429, 401, 403):
+            muertos[mid] = prev_muertos[mid]
+            print(f"  [= dudoso] {mid}: {res.get('http')} -> sin decisión", file=sys.stderr)
+        elif res.get("http"):
+            muertos[mid] = str(res.get("http"))
+            print(f"  [= muerto] {mid}: {res.get('http')} definitivo", file=sys.stderr)
+        else:
+            muertos[mid] = "timeout"
+            print(f"  [= dudoso] {mid}: sigue timeout tras reintentos", file=sys.stderr)
+
+    vivos = sorted(set(vivos))
+    os.makedirs(os.path.dirname(MUERTOS), exist_ok=True)
+    payload = {"actualizado": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+               "proveedor": "nvidia", "vivos": vivos, "muertos": muertos}
+    json.dump(payload, open(MUERTOS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    print(f"[dudosos] vivos:{len(vivos)} muertos:{len(muertos)} -> {MUERTOS}", file=sys.stderr)
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
-    solo_chat = "--todo" not in sys.argv
 
     if not os.path.exists(AUTH):
         print("[warn] no existe auth.json; no hay nada que sondear", file=sys.stderr)
@@ -165,6 +247,11 @@ def main():
         print("[warn] no hay key de nvidia en auth.json", file=sys.stderr)
         return
 
+    if "--dudosos" in sys.argv:
+        modo_dudosos(key)
+        return
+
+    solo_chat = "--todo" not in sys.argv
     verbose = leer_verbose()
     solo = {}
     for full_id, meta in verbose:

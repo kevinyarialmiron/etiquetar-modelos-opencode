@@ -94,8 +94,8 @@ PY
 }
 
 # ----------------------------------------------------------------------------+
-# T3. --apply: escribe config, los muertos ya etiquetados pasan a ⛔, y los no
-#     etiquetados muertos no se crean
+# T3. --apply: escribe config; los muertos se marcan SIEMPRE 💀 (aun sin entrada
+#     previa) y quedan fuera del dataset
 # ----------------------------------------------------------------------------+
 t_apply_ocultos() {
   local h; h=$(new_home apply); env_home "$h"
@@ -104,8 +104,11 @@ t_apply_ocultos() {
 import json, os
 cfg = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))
 nm = cfg["provider"]["nvidia"]["models"]
-assert nm["nvidia/nemotron-mini-4b-instruct"]["name"] == "⛔ Nemotron Mini 4B", nm["nvidia/nemotron-mini-4b-instruct"]["name"]
-assert "nvidia/nv-embed-v1" not in nm, "un muerto sin etiquetar no debe crearse en config"
+# muerto que ya tenia etiqueta -> calavera
+assert nm["nvidia/nemotron-mini-4b-instruct"]["name"] == "💀 Nemotron Mini 4B", nm["nvidia/nemotron-mini-4b-instruct"]["name"]
+# muerto SIN entrada previa -> tambien se crea marcado calavera (no queda invisible)
+assert nm["nvidia/nv-embed-v1"]["name"] == "💀 Ingest E5 Mistral", nm["nvidia/nv-embed-v1"]["name"]
+assert nm["nvidia/openai/whisper-large-v3"]["name"] == "💀 Whisper Large V3", nm["nvidia/openai/whisper-large-v3"]["name"]
 assert cfg["provider"]["openrouter"]["models"]["anthropic/claude-opus-4.0"]["name"] == "⭐🥇❿❗ Claude Opus 4.0"
 # los base-name originales se conservan (strip idempotente)
 assert cfg["provider"]["openrouter"]["models"]["mistralai/mistral-small-3.2"]["name"] == "🥈🪙 Mistral Small 3.2"
@@ -188,7 +191,7 @@ t_watch() {
 }
 
 # ----------------------------------------------------------------------------+
-# T7. instalador en HOME falso: copia, backup, nombres y ⛔
+# T7. instalador en HOME falso: copia, backup, nombres y 💀
 # ----------------------------------------------------------------------------+
 t_instalador() {
   local h; h=$(new_home install); env_home "$h"
@@ -202,7 +205,7 @@ t_instalador() {
   [ -f "$HOME/.config/opencode/data/nvidia-muertos.json" ] || fail "no copió nvidia-muertos.json"
   [ -f "$HOME/.config/opencode/data/modelos.json" ] || fail "no generó data/modelos.json"
   grep -q "⭐🥇❿❗ Claude Opus 4.0" "$HOME/.config/opencode/opencode.json" || fail "no aplicó nombre principal"
-  grep -q "⛔ Nemotron Mini 4B" "$HOME/.config/opencode/opencode.json" || fail "no marcó muerto ⛔"
+  grep -q "💀 Nemotron Mini 4B" "$HOME/.config/opencode/opencode.json" || fail "no marcó muerto 💀"
   ls "$HOME/.config/opencode/opencode.json.bak-etiquetas-"* >/dev/null 2>&1 || fail "no hizo backup"
 
   bash "$HOME/.config/opencode/bin/modelos.sh" >/dev/null 2>&1 || fail "modelos.sh falló"
