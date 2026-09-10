@@ -214,6 +214,12 @@ Sí. `instalar.ps1` instala todo en `%USERPROFILE%\.config\opencode\opencode.jso
 config global compartida por la **terminal y la app de escritorio** de OpenCode, así
 que las etiquetas se ven en ambas. También funciona reordenar Favoritos en Windows.
 
+Si la app de escritorio (Electron) renderiza los emojis de forma errónea (glifos
+cambiantes, dobles o en blanco), usá el **modo ASCII**: corré
+`gen-modelos.py --ascii --apply` o seteá la variable `ETIQUETAS_ASCII=1` antes de
+instalar. El picker mostrará etiquetas 100% ASCII estables (`[N1][GRATIS]`, `[N2]`,
+etc.) que funcionan con cualquier fuente.
+
 **¿Puedo usar el comando `curl | bash` en Windows para instalar?**
 No. Ese comando es del instalador de Linux (`instalar.sh`): necesita `bash`, que en
 Windows solo existe si tenés WSL. En Windows nativo (PowerShell/CMD) usá el de la

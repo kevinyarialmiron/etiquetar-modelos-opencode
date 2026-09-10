@@ -17,6 +17,13 @@ Formato de nombre: [⭐]medalla[emoji costo]  [nombre]
 Escala de costo (output $ / 1M tokens):
   $0 -> 🌱 (gratis)   $0-$1 -> 🪙 (centavos)   $1-2 -> ❶   $2-3 -> ❷   $3-4 -> ❸   $4-5 -> ❹
   $5-6 -> ❺❗   ...   $9-10 -> ❾❗   >=$10 -> ❿❗
+
+MODO ASCII (opcional): los glifos emoji (⭐🥇🌱…) dependen de la fuente y pueden
+renderizarse mal en ciertas terminales / la app de escritorio. Activá el modo
+ASCII con la flag `--ascii` o la variable de entorno `ETIQUETAS_ASCII=1` para
+usar etiquetas 100% ASCII estables en cualquier renderer:
+  nivel -> [N1]..[N4]   costo -> [GRATIS] [CENT] [1-2]..[9-10] [10+]
+  tipo  -> [EMB] [IMG] [AUD]   muerto -> [MUERTO]
 """
 import json
 import os
@@ -34,6 +41,29 @@ COST_EMOJI = ["🌱", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "�
 MEDAL = {1: "🥇", 2: "🥈", 3: "🥉", 4: "🏅"}
 TIPO_EMOJI = {"chat": "", "embed": "🧩", "imagen": "🖼️", "audio": "🎙️", "otro": "🧩"}
 EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️💀"
+
+NIVEL_TAG = {1: "[N1]", 2: "[N2]", 3: "[N3]", 4: "[N4]"}
+TIPO_TAG_ASCII = {"chat": "", "embed": "[EMB]", "imagen": "[IMG]", "audio": "[AUD]", "otro": "[EMB]"}
+PREFIJO_ASCII_RE = r"^(?:\[[^\]]*\]\s*)+"
+
+
+def ascii_mode():
+    flag = "--ascii" in sys.argv
+    env = os.environ.get("ETIQUETAS_ASCII", "0").strip().lower()
+    return flag or env in ("1", "true", "yes", "si", "on")
+
+
+def cost_tag_ascii(out):
+    if out is None:
+        return ""
+    if out == 0:
+        return "[GRATIS]"
+    if out < 1:
+        return "[CENT]"
+    n = int(out)
+    if n >= 10:
+        return "[10+]"
+    return f"[{n}-{n + 1}]"
 
 
 def bin_opencode():
@@ -118,6 +148,13 @@ def strip_emojis(t):
     return t
 
 
+def strip_etiquetas(t):
+    if not t:
+        return ""
+    t = re.sub(PREFIJO_ASCII_RE, "", t).strip()
+    return strip_emojis(t)
+
+
 def parse_medalla_actual(name):
     if not name:
         return 0
@@ -162,7 +199,7 @@ def es_oculto(full_id, muertos, ocultar_patrones):
 
 
 def base_original(cfg_key, cur_name, name_by_meta):
-    return strip_emojis(cur_name) or strip_emojis(name_by_meta) or \
+    return strip_etiquetas(cur_name) or strip_etiquetas(name_by_meta) or \
         cfg_key.split("/")[-1].replace("-", " ").title()
 
 
@@ -235,13 +272,19 @@ def main():
             if prov == "ollama":
                 cost_out = 0.0
 
-            ceil = cost_emoji(cost_out)
             cur_name = modelos_config.get(cfg_key) if isinstance(modelos_config, dict) else None
             cur_name = cur_name.get("name") if isinstance(cur_name, dict) else None
             base = base_original(cfg_key, cur_name, name_by_meta)
-            star = "⭐" if nivel == 1 else ""
-            medalla = MEDAL.get(nivel, "")
-            tag = TIPO_EMOJI.get(tipo, "")
+            if ascii_mode():
+                medalla = NIVEL_TAG.get(nivel, "")
+                tag = TIPO_TAG_ASCII.get(tipo, "")
+                ceil = cost_tag_ascii(cost_out)
+                star = ""
+            else:
+                star = "⭐" if nivel == 1 else ""
+                medalla = MEDAL.get(nivel, "")
+                tag = TIPO_EMOJI.get(tipo, "")
+                ceil = cost_emoji(cost_out)
             if oculto:
                 n_ocultos += 1
                 continue
@@ -277,12 +320,13 @@ def main():
                         cur = entry
                     base = base_original(cfg_key, cur,
                                          meta_util(meta_by_full.get(full_id, {}))[0])
-                    # todo muerto se marca con calavera: se crea la entrada aunque
+                    # todo muerto se marca: se crea la entrada aunque
                     # no existiera antes para que el picker lo muestre claramente
+                    marca = "[MUERTO]" if ascii_mode() else "💀"
                     if isinstance(entry, dict):
-                        entry["name"] = f"💀 {base}"
+                        entry["name"] = f"{marca} {base}"
                     else:
-                        entry = {"name": f"💀 {base}"}
+                        entry = {"name": f"{marca} {base}"}
                     modelos_config[cfg_key] = entry
                     n_ocultos_aplicados += 1
                     continue
@@ -295,7 +339,7 @@ def main():
                 modelos_config[cfg_key] = entry
         json.dump(config, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         open(CONFIG, "a").write("\n")
-        print(f"[apply] opencode.json actualizado ({len(rows)} modelos | {n_ocultos} ocultos | {n_ocultos_aplicados} marcados 💀)")
+        print(f"[apply] opencode.json actualizado ({len(rows)} modelos | {n_ocultos} ocultos | {n_ocultos_aplicados} marcados {'MUERTO' if ascii_mode() else '💀'})")
     else:
         from collections import Counter
         c = Counter(r["provider"] for r in rows)
