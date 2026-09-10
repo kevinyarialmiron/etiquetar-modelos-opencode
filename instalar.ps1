@@ -4,7 +4,9 @@
 .DESCRIPTION
   Detecta opencode y Python, copia los archivos a %USERPROFILE%\.config\opencode
   y aplica los nombres a opencode.json. Con -yes reordena la pestana Favoritos.
-  Retry automatico y fallback a CDN (jsdelivr) si raw.githubusercontent falla (429).
+  Si no hay Python real (descarta el alias falso de Microsoft Store) lo instala
+  automaticamente con winget. Retry automatico y fallback a CDN (jsdelivr) si
+  raw.githubusercontent falla (429).
 .PARAMETER aplica    Aplica los nombres a opencode.json.
 .PARAMETER yes       Aplica y reordena Favoritos sin preguntar (-aplica -yes).
 .PARAMETER noFavoritos  Aplica sin reordenar Favoritos.
@@ -70,12 +72,54 @@ function Err([string]$m)  { Write-Host "[instalar] ERROR: $m" -ForegroundColor R
 function Warn([string]$m) { Write-Host "[instalar] AVISO: $m" -ForegroundColor Yellow }
 
 # python ---------------------------------------------------------------
-$Py = $null
-foreach ($c in @("python", "py", "python3")) {
-  $g = Get-Command $c -ErrorAction SilentlyContinue
-  if ($g) { $Py = $g.Source; break }
+function Find-Python {
+  # descarta el alias de Microsoft Store (stub que no instala nada y suelta el mensaje
+  # "no se encont Python; ejecutar sin argumentos..."); valida que Python real corra.
+  foreach ($c in @("py", "python", "python3")) {
+    $g = Get-Command $c -ErrorAction SilentlyContinue
+    if ($g -and $g.Source -and $g.Source -notmatch 'WindowsApps') {
+      try { & $g.Source --version 2> $null | Out-Null } catch { continue }
+      if ($LASTEXITCODE -eq 0) { return $g.Source }
+    }
+  }
+  # rutas tipicas de instalacion directa (python.org / winget scope=user)
+  foreach ($py in @(
+    "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+    "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+    "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe"
+  )) {
+    if (Test-Path $py) { return $py }
+  }
+  return $null
 }
-if (-not $Py) { Err "Necesitas Python para generar las etiquetas. Instaldo desde python.org y reintenta." }
+
+function Refresh-Path {
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "User") + ";" +
+              [Environment]::GetEnvironmentVariable("Path", "Machine")
+}
+
+$Py = Find-Python
+if (-not $Py) {
+  Write-Host "[instalar] Python no encontrado." -ForegroundColor Yellow
+  $installPython = $false
+  if ($aplica) { $installPython = $true }
+  elseif ($Host.Name -eq "ConsoleHost") {
+    $resp = Read-Host "Instalar Python con winget (recomendado)? [s/N]"
+    if ($resp -match '^(s|si|s[iI]|y)$') { $installPython = $true }
+  }
+  if ($installPython) {
+    Write-Host "[instalar] instalando Python 3.12 con winget (tarda un poco)..."
+    winget install --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -eq 0) {
+      Refresh-Path
+      $Py = Find-Python
+    }
+  }
+  if (-not $Py) {
+    Err "No se pudo encontrar/instalar Python. Instalalo a mano desde https://python.org (marcando 'Add python.exe to PATH'), cerra y reabri la terminal, y volve a correr el instalador."
+  }
+}
+Write-Host "[instalar] python: $Py"
 
 # opencode -------------------------------------------------------------
 $Oc = $null

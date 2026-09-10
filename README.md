@@ -47,7 +47,8 @@ un benchmark), el costo sale del catálogo oficial de OpenCode, y ambos son edit
 ## Requisitos
 
 - **Linux/macOS/WSL:** OpenCode instalado + `python3`.
-- **Windows:** OpenCode (terminal o app de escritorio) + Python (desde [python.org](https://python.org)).
+- **Windows:** OpenCode (terminal o app de escritorio). Python es opcional: si no está,
+  el instalador lo instala solo con winget (descarta el alias falso de la Microsoft Store).
 - Red (para el catálogo de costos la primera vez).
 
 > **WSL con opencode de Windows:** si en WSL el instalador detecta que el `opencode`
@@ -92,6 +93,11 @@ irm https://cdn.jsdelivr.net/gh/kevinyarialmiron/etiquetar-modelos-opencode@main
 Detecta opencode (binario nativo, shim npm o app de escritorio) y Python, copia los
 archivos a `%USERPROFILE%\.config\opencode` y aplica. En Windows la config global es
 la misma para **terminal y app de escritorio**, así que las etiquetas se ven en ambos.
+
+> **¿Y si la PC no tiene Python?** El instalador lo detecta solo: descarta el alias
+> fantasma de la Microsoft Store (el que tira "no se encontró Python...") y, si hace
+> falta, instala Python con winget (o te pediría confirmarlo). Cerrá y reabrí la
+> terminal después de instalar Python.
 
 ### Ruta transparente (clonar y correr)
 
