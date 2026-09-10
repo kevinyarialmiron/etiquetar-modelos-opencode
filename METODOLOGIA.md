@@ -32,6 +32,31 @@ El significado de cada nivel:
 > `./instalar.sh aplica` (o `gen-modelos.py --apply`) para que el ranking
 > refleje tu experiencia.
 
+### Criterio por familia (cómo se decide cada nivel)
+
+El criterio es consistente entre proveedores: **un mismo modelo vale lo mismo
+abriéndolo desde openrouter, opencode o opencode-go**. Las reglas buscan por
+**familia** (regex) y el `override` solo corrige casos puntuales.
+
+- **1 ⭐🥇 (frontera):** los mejores de cada laboratorio de IA — últimas
+  generaciones *grandes* (`gpt-6`, `gemini-3.x-pro`, `claude-*-5`,
+  `glm-5.3`, `kimi-k3`, `qwen3.7/3.8-max`, `gpt-5.2+`, `astra`, `deepseek-v4-pro`).
+- **2 🥈 (muy bueno):** generaciones recientes *normales o flash* — `gpt-5`,
+  `claude-fable-5`, `glm-5.x`, `gemini-3.x-flash/lite/omni`, `qwen3.6+/3.7/3.8`,
+  `hy4`, `minimax-m3/m2.7`, `seed-2.1`, `nova-premier`, `kimi-k2.6/7`, `grok-build`.
+- **3 🥉 (sólido/decente):** gamas medias o especialistas — `qwen3.5/coder`,
+  `gemma-4`, `gpt-oss`, `muse`, `ling-3`, `seed`, `nemotron-3-super/nano`,
+  `mistral-small-3.x`, `laguna`, `mercury-2.5`, `glm-4.7+`, `grok-4`.
+- **4 🏅 (funciona pero antiguo):** generaciones pasadas — `gpt-3.5/4`,
+  `o1/o3/o4`, `claude-3`, `gemini-2`, `llama-3`, `qwen2.5/3-8b`, `mistral
+  grande/medium vieja`, `ministral`, `gemma-2/3`, `mixtral`, `deepseek-r1/chat`,
+  `minimax-m1/m2`, `phi-4`.
+- **sin medalla = evitar:** finetunes de rol/RP, micro-modelos, espejos `~`,
+  y modelos de imagen/audio/video/embedding (no son chat; no se califican).
+
+En la duda, un modelo sin medalla es mejor que una medalla dudosa: la ausencia
+te avisa que no es recomendado por defecto, no que esté roto.
+
 ### Razonamiento y costo: sort por separado
 
 Calidad y costo son **dos ejes independientes** que se muestran juntos pero no se
