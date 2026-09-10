@@ -52,7 +52,11 @@ def leer_verbose():
     if os.name == "nt" and binoc.lower().endswith((".cmd", ".bat")):
         # shim de npm: no es un exe directo; hay que ejecutarlo con shell
         cmdline = " ".join(f'"{c}"' for c in [binoc, "models", "--verbose"])
-        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True)
+        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True, encoding="utf-8")
+    elif os.name == "nt" and binoc.lower().endswith(".ps1"):
+        # shim PowerShell de npm: invocar via powershell.exe
+        cmdline = f'powershell -NoProfile -ExecutionPolicy Bypass -File "{binoc}" models --verbose'
+        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True, encoding="utf-8")
     else:
         out = subprocess.run([binoc, "models", "--verbose"],
                              capture_output=True, text=True)

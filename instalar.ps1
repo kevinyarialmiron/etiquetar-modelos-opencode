@@ -128,7 +128,15 @@ if (Test-Path $native) {
   $Oc = $native
 } else {
   $g = Get-Command opencode -ErrorAction SilentlyContinue
-  if ($g) { $Oc = $g.Source }
+  if ($g) {
+    # Si Get-Command devuelve .ps1 (shim PowerShell de npm), preferir .cmd
+    if ($g.Source -match '\.ps1$') {
+      $cmd = $g.Source -replace '\.ps1$', '.cmd'
+      if (Test-Path $cmd) { $Oc = $cmd } else { $Oc = $g.Source }
+    } else {
+      $Oc = $g.Source
+    }
+  }
 }
 if (-not $Oc) {
   # shim global típico de npm aun si no está en PATH de esta sesión
@@ -144,8 +152,8 @@ if (-not $Oc) {
   Err "opencode no encontrado. Instaldo con: curl -fsSL https://opencode.ai/install | bash  (o desde https://opencode.ai)"
 }
 Write-Host "[instalar] opencode: $Oc"
-if ($Oc -match '\.(cmd|bat)$') {
-  Warn "El opencode detectado es un shim de npm (.cmd). Si el catalogo sale chico o falla, instaldo opencode con https://opencode.ai/install (crea opencode.exe)."
+if ($Oc -match '\.(cmd|bat|ps1)$') {
+  Warn "El opencode detectado es un shim de npm ($([System.IO.Path]::GetExtension($Oc))). Si el catalogo sale chico o falla, instaldo opencode con https://opencode.ai/install (crea opencode.exe)."
 }
 
 # descargar archivos (local si hay clone) ------------------------------
