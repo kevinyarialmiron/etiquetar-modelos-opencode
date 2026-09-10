@@ -57,6 +57,20 @@ un benchmark), el costo sale del catálogo oficial de OpenCode, y ambos son edit
 
 ## Instalación
 
+> ⚠️ **Elegí el comando de TU sistema.** Hay dos instaladores distintos y cada uno
+> funciona **solo** en su sistema:
+>
+> | Tu sistema | Instalador | Comando |
+> |---|---|---|
+> | **Linux / macOS / WSL** | `instalar.sh` | `curl ... | bash -s aplica -y` (ver abajo) |
+> | **Windows** (PowerShell/CMD) | `instalar.ps1` | el comando `irm ...` de la sección Windows |
+>
+> El comando `curl | bash` es bash de Linux: en Windows **no existe `bash`**, así que
+> ese se lanza ahí **no funciona** (aunque PowerShell tenga un comando `curl`, es un
+> alias distinto). Y el `irm` de Windows es solo para Powershell: no lo corras en
+> Linux. Ambos instalan **el mismo sistema de etiquetas**, solo que cada uno sabe
+> copiar los archivos al lugar correcto de su sistema.
+
 ### Linux / macOS / WSL
 
 ```bash
@@ -193,6 +207,12 @@ no se mezclan en una sola fórmula.
 Sí. `instalar.ps1` instala todo en `%USERPROFILE%\.config\opencode\opencode.json`,
 config global compartida por la **terminal y la app de escritorio** de OpenCode, así
 que las etiquetas se ven en ambas. También funciona reordenar Favoritos en Windows.
+
+**¿Puedo usar el comando `curl | bash` en Windows para instalar?**
+No. Ese comando es del instalador de Linux (`instalar.sh`): necesita `bash`, que en
+Windows solo existe si tenés WSL. En Windows nativo (PowerShell/CMD) usá el de la
+sección **Instalación → Windows**, que descarga `instalar.ps1` con `irm`. Son dos
+instaladores distintos que aplican el mismo sistema de etiquetas en cada sistema.
 
 **¿Aplica para todos los proveedores?**
 Sí, exactamente los que tu instancia tiene configurados/autenticados (openrouter,
