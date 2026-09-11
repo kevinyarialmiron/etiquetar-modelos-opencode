@@ -31,10 +31,13 @@ $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Run-Py {
-  param([string]$script, [string[]]$args)
+  # OJO: no usar $args como nombre de parametro (colisiona con la variable
+  # automatica y se descartan los argumentos, ej. --apply). Usamos
+  # ValueFromRemainingArguments para capturar todo lo que sigue al script.
+  param([string]$script, [Parameter(ValueFromRemainingArguments = $true)][string[]]$pyArgs)
   $env:OPENCODE_BIN = $Oc
   $env:PYTHONIOENCODING = "utf-8"
-  & $Py $script @args
+  & $Py $script @pyArgs
   if ($LASTEXITCODE -ne 0) { Err "fallo: $script (exit $LASTEXITCODE)" }
 }
 
@@ -73,22 +76,25 @@ function Warn([string]$m) { Write-Host "[instalar] AVISO: $m" -ForegroundColor Y
 
 # python ---------------------------------------------------------------
 function Find-Python {
-  # descarta el alias de Microsoft Store (stub que no instala nada y suelta el mensaje
-  # "no se encont Python; ejecutar sin argumentos..."); valida que Python real corra.
-  foreach ($c in @("py", "python", "python3")) {
-    $g = Get-Command $c -ErrorAction SilentlyContinue
-    if ($g -and $g.Source -and $g.Source -notmatch 'WindowsApps') {
-      try { & $g.Source --version 2> $null | Out-Null } catch { continue }
-      if ($LASTEXITCODE -eq 0) { return $g.Source }
-    }
-  }
-  # rutas tipicas de instalacion directa (python.org / winget scope=user)
+  # Preferir el python.exe real de instalacion directa (python.org / winget
+  # scope=user) ANTES que el launcher py.exe: py.exe es un wrapper y complica
+  # el paso de argumentos. Este chequeo va primero a proposito.
   foreach ($py in @(
     "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
     "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
     "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe"
   )) {
     if (Test-Path $py) { return $py }
+  }
+  # Fallback: buscar en PATH, descartando el alias de Microsoft Store (stub que
+  # no instala nada y suelta el mensaje "no se encontro Python; ejecutar sin
+  # argumentos..."); valida que Python real corra.
+  foreach ($c in @("python", "python3", "py")) {
+    $g = Get-Command $c -ErrorAction SilentlyContinue
+    if ($g -and $g.Source -and $g.Source -notmatch 'WindowsApps') {
+      try { & $g.Source --version 2> $null | Out-Null } catch { continue }
+      if ($LASTEXITCODE -eq 0) { return $g.Source }
+    }
   }
   return $null
 }
@@ -120,6 +126,17 @@ if (-not $Py) {
   }
 }
 Write-Host "[instalar] python: $Py"
+
+# dependencia de probe-nvidia.py (deteccion de modelos muertos)
+& $Py -c "import requests" *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[instalar] instalando dependencia 'requests' (para probe-nvidia.py)..."
+  & $Py -m pip install --quiet --disable-pip-version-check requests *> $null
+  & $Py -c "import requests" *> $null
+  if ($LASTEXITCODE -ne 0) {
+    Warn "no se pudo instalar 'requests'; probe-nvidia.py no correra hasta instalarlo (python -m pip install requests)"
+  }
+}
 
 # opencode -------------------------------------------------------------
 $Oc = $null
@@ -159,7 +176,7 @@ if ($Oc -match '\.(cmd|bat|ps1)$') {
 # descargar archivos (local si hay clone) ------------------------------
 $files = @("gen-modelos.py", "models-rank.json", "modelos.sh",
            "ordenar-favoritos.sh", "ordenar-favoritos.py", "commands-modelos.md",
-           "probe-nvidia.py", "nvidia-muertos.json", "watch-etiquetas.sh")
+           "probe-nvidia.py", "probe-proveedores.py", "nvidia-muertos.json", "watch-etiquetas.sh")
 
 $SRC = Join-Path $PSScriptRoot "files"
 if (-not (Test-Path $SRC)) {
@@ -195,6 +212,7 @@ $copyPlan = @{
   "ordenar-favoritos.py" = Join-Path $BIN  "ordenar-favoritos.py"
   "commands-modelos.md"  = Join-Path $CMDS "modelos.md"
   "probe-nvidia.py"      = Join-Path $BIN  "probe-nvidia.py"
+  "probe-proveedores.py" = Join-Path $BIN  "probe-proveedores.py"
   "nvidia-muertos.json"  = Join-Path $DATA "nvidia-muertos.json"
   "watch-etiquetas.sh"   = Join-Path $BIN  "watch-etiquetas.sh"
 }

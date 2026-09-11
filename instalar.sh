@@ -150,7 +150,7 @@ if ! "$OPENCODE_BIN" --version >/dev/null 2>&1; then
 fi
 
 # --- obtener archivos (local si es un clone; si no, descarga desde GitHub) --
-files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh ordenar-favoritos.py commands-modelos.md probe-nvidia.py nvidia-muertos.json watch-etiquetas.sh)
+files=(gen-modelos.py models-rank.json modelos.sh ordenar-favoritos.sh ordenar-favoritos.py commands-modelos.md probe-nvidia.py probe-proveedores.py nvidia-muertos.json watch-etiquetas.sh)
 SRC="$SCRIPT_DIR/files"
 if [[ ! -d "$SRC" ]]; then
   command -v curl >/dev/null 2>&1 || err "no encuentro los archivos localmente y no hay curl para descargarlos. Cloná el repo o instalá curl."
@@ -176,6 +176,7 @@ plan=(
   "ordenar-favoritos.py:$BIN/ordenar-favoritos.py:755"
   "commands-modelos.md:$CMDS/modelos.md:644"
   "probe-nvidia.py:$BIN/probe-nvidia.py:755"
+  "probe-proveedores.py:$BIN/probe-proveedores.py:755"
   "nvidia-muertos.json:$DATA/nvidia-muertos.json:644"
   "watch-etiquetas.sh:$BIN/watch-etiquetas.sh:755"
 )

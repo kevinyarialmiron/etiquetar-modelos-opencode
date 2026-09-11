@@ -28,7 +28,10 @@ import sys
 CONFIG = os.path.expanduser("~/.config/opencode/opencode.json")
 RULES = os.path.expanduser("~/.config/opencode/data/models-rank.json")
 OUTDATA = os.path.expanduser("~/.config/opencode/data/modelos.json")
-MUERTOS = os.path.expanduser("~/.config/opencode/data/nvidia-muertos.json")
+DATA_DIR = os.path.expanduser("~/.config/opencode/data")
+# Archivos de muertos por proveedor (probe-proveedores.py): probe-<prov>.json.
+# Se conserva la retro-compat con el nombre legacy nvidia-muertos.json.
+LEGACY_MUERTOS = os.path.expanduser("~/.config/opencode/data/nvidia-muertos.json")
 
 COST_EMOJI = ["🌱", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾"]
 MEDAL = {1: "🥇", 2: "🥈", 3: "🥉", 4: "🏅"}
@@ -52,14 +55,17 @@ def leer_verbose():
     if os.name == "nt" and binoc.lower().endswith((".cmd", ".bat")):
         # shim de npm: no es un exe directo; hay que ejecutarlo con shell
         cmdline = " ".join(f'"{c}"' for c in [binoc, "models", "--verbose"])
-        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True, encoding="utf-8")
+        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True,
+                             encoding="utf-8", errors="replace")
     elif os.name == "nt" and binoc.lower().endswith(".ps1"):
         # shim PowerShell de npm: invocar via powershell.exe
         cmdline = f'powershell -NoProfile -ExecutionPolicy Bypass -File "{binoc}" models --verbose'
-        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True, encoding="utf-8")
+        out = subprocess.run(cmdline, capture_output=True, text=True, shell=True,
+                             encoding="utf-8", errors="replace")
     else:
         out = subprocess.run([binoc, "models", "--verbose"],
-                             capture_output=True, text=True)
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="replace")
     rows = []
     cur = None
     buf = []
@@ -142,15 +148,47 @@ def detect_tipo(meta):
 
 
 def cargar_muertos():
+    """Lee los muertos de TODOS los proveedores: data/probe-*.json (+ el legacy
+    nvidia-muertos.json si aún existe y no hay probe-nvidia.json)."""
+    muertos = {}
+    if os.path.isdir(DATA_DIR):
+        for fn in sorted(os.listdir(DATA_DIR)):
+            if fn.startswith("probe-") and fn.endswith(".json"):
+                _absorber_muertos(os.path.join(DATA_DIR, fn), muertos)
+    # retro-compat: si aún no hay probe-nvidia.json, leer el legacy nvidia-muertos.json
+    if not os.path.exists(os.path.join(DATA_DIR, "probe-nvidia.json")):
+        _absorber_muertos(LEGACY_MUERTOS, muertos)
+    return muertos
+
+
+def _absorber_muertos(path, destino):
     try:
-        data = json.load(open(MUERTOS, encoding="utf-8"))
-        return data.get("muertos", {}) or {}
+        data = json.load(open(path, encoding="utf-8"))
+        m = data.get("muertos", {}) or {}
     except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+        return
+    if isinstance(m, dict):
+        destino.update(m)
+
+
+def es_muerto_definitivo(estado):
+    """Un modelo solo se esconde/marca 💀 ante un 4xx DEFINITIVO (404/410/400
+    con pista), nunca por timeout/5xx (transitorio) ni por auth/quota
+    (401/402/403/429 = 'no verificado', puede ser falta de saldo)."""
+    if not isinstance(estado, str):
+        return True
+    s = estado.strip()
+    if not s.isdigit():
+        return False  # "timeout", "5xx"... -> no definitivo (conservador)
+    code = int(s)
+    if 400 <= code <= 499:
+        # 4xx definitivo SIEMPRE muerto, salvo auth/quota
+        return code not in (401, 402, 403, 429)
+    return False  # 2xx/3xx/5xx -> no es evidencia de muerte
 
 
 def es_oculto(full_id, muertos, ocultar_patrones):
-    if full_id in muertos:
+    if full_id in muertos and es_muerto_definitivo(muertos[full_id]):
         return True
     for pat in ocultar_patrones:
         try:

@@ -25,6 +25,7 @@ t_estaticos() {
   python3 -m py_compile \
     "$REPO_ROOT/files/gen-modelos.py" \
     "$REPO_ROOT/files/probe-nvidia.py" \
+    "$REPO_ROOT/files/probe-proveedores.py" \
     "$REPO_ROOT/files/ordenar-favoritos.py" || fail "py_compile"
   python3 - "$REPO_ROOT" <<'PY' || fail "JSON inválido"
 import json, os, sys
@@ -228,11 +229,39 @@ t_modelos_cmd() {
 }
 
 # ----------------------------------------------------------------------------+
+# T9. muertos multi-proveedor (probe-*.json): 4xx definitivo oculta, "timeout"
+#     (dudoso) NO oculta ni marca 💀
+# ----------------------------------------------------------------------------+
+t_muertos_multiprov() {
+  local h; h=$(new_home multiprov); env_home "$h"
+  cp "$REPO_ROOT/tests/fixtures/probe-openrouter.json" \
+     "$HOME/.config/opencode/data/probe-openrouter.json"
+  run_gen --apply >/dev/null 2>&1 || fail "apply falló"
+  python3 - <<'PY' || fail "muertos multi-proveedor incorrectos"
+import json, os
+cfg = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))
+orms = cfg["provider"]["openrouter"]["models"]
+# 4xx definitivo -> 💀
+assert orms["deepseek/deepseek-v3.1-terminus"]["name"] == "💀 DeepSeek V3.1 Terminus", \
+    orms["deepseek/deepseek-v3.1-terminus"]["name"]
+# timeout (dudoso) -> NUNCA se oculta ni se marca 💀
+assert not orms["meta/llama-4-maverick"]["name"].startswith("💀"), \
+    orms["meta/llama-4-maverick"]["name"]
+
+rows = json.load(open(os.path.expanduser("~/.config/opencode/data/modelos.json")))["modelos"]
+ids = {r["id"] for r in rows}
+assert "openrouter/deepseek/deepseek-v3.1-terminus" not in ids, "el 404 debió ocultarse"
+assert "openrouter/meta/llama-4-maverick" in ids, "el timeout NO debió ocultarse"
+PY
+  return 0
+}
+
+# ----------------------------------------------------------------------------+
 # runner
 # ----------------------------------------------------------------------------+
 T_LIST="$@"
 if [ "$#" -eq 0 ]; then
-  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd"
+  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd t_muertos_multiprov"
 fi
 
 for tname in $T_LIST; do

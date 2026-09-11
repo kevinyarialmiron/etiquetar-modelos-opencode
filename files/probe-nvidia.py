@@ -26,7 +26,12 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import requests
+try:
+    import requests
+except ImportError:
+    print("[error] falta el paquete 'requests'. Instalalo con: python -m pip install requests",
+          file=sys.stderr)
+    sys.exit(2)
 
 MUERTOS = os.path.expanduser("~/.config/opencode/data/nvidia-muertos.json")
 AUTH = os.path.expanduser("~/.local/share/opencode/auth.json")
@@ -45,6 +50,15 @@ def es_dudoso(estado):
     return estado == "timeout" or (isinstance(estado, str) and estado[:1] == "5")
 
 
+def cargar_previo():
+    """Lee el baseline previo -> (muertos_dict, vivos_set)."""
+    try:
+        data = json.load(open(MUERTOS, encoding="utf-8"))
+        return (data.get("muertos", {}) or {}), set(data.get("vivos", []) or [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}, set()
+
+
 def bin_opencode():
     binoc = os.environ.get("OPENCODE_BIN", "")
     if binoc:
@@ -61,7 +75,8 @@ def bin_opencode():
 def leer_verbose():
     binoc = bin_opencode()
     out = subprocess.run([binoc, "models", "--verbose"],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True,
+                         encoding="utf-8", errors="replace")
     rows = []
     cur = None
     buf = []
@@ -268,39 +283,62 @@ def main():
             full_id, res = fut.result()
             resultados[full_id] = res
 
+    prev_muertos, prev_vivos = cargar_previo()
+
     muertos = {}
-    vivos = []
-    prev = {}
-    prev_vivos = set()
-    try:
-        prev = json.load(open(MUERTOS, encoding="utf-8")).get("muertos", {})
-        prev_vivos = set(json.load(open(MUERTOS, encoding="utf-8")).get("vivos", []))
-    except (FileNotFoundError, json.JSONDecodeError):
-        pass
+    vivos = set()
     for full_id, res in sorted(resultados.items()):
         if res.get("skip"):
+            # No se probó en este modo (p.ej. el modo chat saltea embed/imagen/audio):
+            # conservar el estado previo para no borrar datos de un run --todo.
+            if full_id in prev_muertos:
+                muertos[full_id] = prev_muertos[full_id]
+            elif full_id in prev_vivos:
+                vivos.add(full_id)
             continue
         if res.get("ok") is True:
-            vivos.append(full_id)
+            vivos.add(full_id)
             continue
-        # un timeout (cold start / rate limit) nunca degrada un modelo ya
-        # confirmado vivo; solo un 4xx/5xx definitivo lo esconde
-        if res.get("http") is None:
-            if full_id in prev_vivos and full_id not in prev:
-                vivos.append(full_id)
-                continue
-            muertos[full_id] = "timeout"
+        http = res.get("http")
+        if http is None:
+            # timeout / error de red: NUNCA degradar una evidencia definitiva previa
+            # (410 EOL / 404), ni matar un modelo antes confirmado vivo por un solo
+            # timeout (cold start). Si no hay historial, queda como dudoso.
+            if full_id in prev_muertos:
+                muertos[full_id] = prev_muertos[full_id]
+            elif full_id in prev_vivos:
+                vivos.add(full_id)
+            else:
+                muertos[full_id] = "timeout"
             continue
-        if res.get("http") in (429, 401, 403):
+        if http in (429, 401, 403):
+            # sin decisión (cuota/auth): conservar el estado previo si lo había
+            if full_id in prev_muertos:
+                muertos[full_id] = prev_muertos[full_id]
+            elif full_id in prev_vivos:
+                vivos.add(full_id)
             continue
-        muertos[full_id] = str(res.get("http"))
+        if http >= 500:
+            # 5xx = error transitorio del servidor, NO prueba de muerte.
+            # No matar a un modelo antes vivo; si no hay historial, queda dudoso.
+            if full_id in prev_muertos:
+                muertos[full_id] = prev_muertos[full_id]
+            elif full_id in prev_vivos:
+                vivos.add(full_id)
+            else:
+                muertos[full_id] = str(http)
+            continue
+        # 4xx definitivo (404/410/...) -> muerto confirmado
+        muertos[full_id] = str(http)
 
-    vivos = sorted(set(vivos))
+    vivos = sorted(vivos)
     os.makedirs(os.path.dirname(MUERTOS), exist_ok=True)
     payload = {"actualizado": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                "proveedor": "nvidia", "vivos": vivos, "muertos": muertos}
     json.dump(payload, open(MUERTOS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"[probe] vivos:{len(vivos)} muertos:{len(muertos)} -> {MUERTOS}", file=sys.stderr)
+    n_dudosos = sum(1 for s in muertos.values() if es_dudoso(s))
+    print(f"[probe] vivos:{len(vivos)} muertos:{len(muertos)} "
+          f"(dudosos:{n_dudosos}) -> {MUERTOS}", file=sys.stderr)
 
 
 if __name__ == "__main__":

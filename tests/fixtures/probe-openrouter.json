@@ -1,0 +1,12 @@
+{
+  "actualizado": "2026-09-11T00:00:00Z",
+  "proveedor": "openrouter",
+  "vivos": [
+    "openrouter/anthropic/claude-opus-4.0",
+    "openrouter/anthropic/claude-sonnet-4.0"
+  ],
+  "muertos": {
+    "openrouter/deepseek/deepseek-v3.1-terminus": "404",
+    "openrouter/meta/llama-4-maverick": "timeout"
+  }
+}
