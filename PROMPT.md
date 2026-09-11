@@ -43,6 +43,9 @@ descrito abajo desde cero (también válido).
 - `$0` → 🌱 (gratis) · `$0.01–$0.99` → 🪙 (centavos)
 - `$1–2` → ❶ · `$2–3` → ❷ · `$3–4` → ❸ · `$4–5` → ❹ · `$5–6` → ❺❗ · … · `≥$10` → ❿❗
 - Todo precio >$5 lleva ❗.
+- Proveedores sin precio en el catálogo (ej. `ollama-cloud`, que trae `$0` aunque es
+  pago): el precio sale de la sección `costos` de `models-rank.json`. Si la entrada
+  tiene `"peak": true` (cobro ×2 en hora pico) el nombre termina en `(🕒🔥x2)`.
 
 **Escala de calidad** (hasta 3-4 emojis por nombre):
 - Nivel 1 → `⭐🥇<costo> Nombre` · Nivel 2 → `🥈<costo> Nombre` · Nivel 3 → `🥉<costo> Nombre`
@@ -65,7 +68,7 @@ esconder a mano (esos también van con `💀`).
 `auth.json`, `opencode.json`, `models-rank.json`, un `probe-*.json` o el script.
 
 **Fuente**: `opencode models --verbose` (IDs visibles + costos nativos por
-proveedor; ollama siempre gratis).
+proveedor; ollama local siempre gratis).
 
 **Reglas de calidad**: `~/.config/opencode/data/models-rank.json` con `override`
 (asignaciones por ID) y `niveles` (regex por nivel). Las reglas tienen prioridad

@@ -13,6 +13,7 @@ Funciona en **Linux, macOS, WSL y Windows** (terminal y app de escritorio).
 - **~500 modelos** etiquetados al instante (todo lo que tu opencode "ve").
 - **Calidad**: ⭐🥇 nivel 1 (más confiable) · 🥈 nivel 2 · 🥉 nivel 3 · 🏅 nivel 4 · *sin medalla = evitar*.
 - **Costo** (salida por 1M tokens): 🌱 gratis · 🪙 centavos · ❶ $1-2 · ❷ $2-3 · … · ❺❗ $5-6 · ❿❗ ≥$10.
+  Si un modelo cobra distinto en hora pico, se agrega el aviso `(🕒🔥x2)` (el doble).
 - **Tipo**: 🧩 embed · 🖼️ imagen · 🎙️ audio (los de chat no llevan tag).
 - **Esconde modelos deprecados/muertos**: `probe-proveedores.py` sondea la API real de
   **cada proveedor** (no solo NVIDIA; el catálogo dice `active` hasta en los que ya no
@@ -133,10 +134,13 @@ Siempre crea un backup de `opencode.json` (`.bak-etiquetas-<fecha>`) antes de ap
 ## Personalizar la calidad
 
 El archivo `data/models-rank.json` (que el instalador copia a `~/.config/opencode/data/`)
-define qué nivel tiene cada modelo. Tiene dos secciones:
+define qué nivel tiene cada modelo. Tiene tres secciones:
 
 - `override`: asignación directa por ID (`"openrouter/deepseek/deepseek-v4-pro": 1`).
 - `niveles`: patrones regex por nivel (`"gemini-3\\.(6|7|8)-flash"` → nivel 2).
+- `costos`: precio curado de salida ($/1M tokens) para proveedores cuyo catálogo no
+  publica precio (ej. `ollama-cloud`, que trae `$0` aunque es pago). Opcional
+  `"peak": true` para marcar cobro ×2 en hora pico → muestra `(🕒🔥x2)`.
 
 Si querés que un modelo suba/baje de nivel, editá ese JSON y volvé a correr
 `instalar.sh aplica` (o en Windows `instalar.ps1 -aplica -yes`). Las reglas del

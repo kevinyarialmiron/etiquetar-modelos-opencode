@@ -186,5 +186,29 @@
       "nova-micro",
       "moonshot"
     ]
+  },
+  "costos": {
+    "_nota": "Costo curado (salida $/1M tokens) para proveedores cuyo catalogo no publica precio. Fuente: ollama.com/cloud. 'peak': true = cobra x2 en hora pico (12-18 UTC, lun-vie).",
+    "ollama-cloud/deepseek-v4.1-flash": {"out": 0.60, "peak": true},
+    "ollama-cloud/deepseek-v4-flash": {"out": 0.66, "peak": true},
+    "ollama-cloud/deepseek-v4-flash:0731": {"out": 0.66, "peak": true},
+    "ollama-cloud/deepseek-v4-pro": {"out": 1.98, "peak": true},
+    "ollama-cloud/gemma4:31b": {"out": 0.40},
+    "ollama-cloud/glm-5.1": {"out": 3.20},
+    "ollama-cloud/glm-5.2": {"out": 4.40},
+    "ollama-cloud/glm-5.3": {"out": 4.40},
+    "ollama-cloud/glm-5.3-flash": {"out": 0.50},
+    "ollama-cloud/gpt-oss:120b": {"out": 0.60},
+    "ollama-cloud/gpt-oss:20b": {"out": 0.30},
+    "ollama-cloud/kimi-k3": {"out": 15.00},
+    "ollama-cloud/kimi-k2.6": {"out": 4.00},
+    "ollama-cloud/kimi-k2.7-code": {"out": 4.00},
+    "ollama-cloud/minimax-m3": {"out": 2.40},
+    "ollama-cloud/minimax-m2.7": {"out": 1.20},
+    "ollama-cloud/mistral-large-3:675b": {"out": 1.50},
+    "ollama-cloud/nemotron-3-nano:30b": {"out": 0.24},
+    "ollama-cloud/nemotron-3-super": {"out": 0.60},
+    "ollama-cloud/nemotron-3-ultra": {"out": 3.00},
+    "ollama-cloud/qwen3.5:397b": {"out": 3.60}
   }
 }

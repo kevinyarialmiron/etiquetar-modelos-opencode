@@ -68,14 +68,23 @@ combinan en una sola fórmula. En la pestaña Favoritos el orden es:
 Así podés elegir "quiero lo mejor" (arriba) o "lo mejor que me alcance"
 (corriendo el ojo hacia abajo).
 
-## Costo: dato oficial del proveedor
+## Costo: dato oficial del proveedor (con tabla curada donde falta)
 
 El costo sale del **catálogo oficial de opencode** (`opencode models --verbose`),
 que publica el precio de **salida por 1M de tokens** de cada proveedor. No se
 inventa ni se cachea en el repo; se lee en vivo al generar. Detalles:
 
 - **🌱 gratis** (`$0`) · **🪙 centavos** (`< $1`) · **❶–❹** ($1–5) · **❺❗–❿❗** (>$5, con ❗).
-- Los modelos de **ollama** (locales) siempre cuentan como gratis.
+- Los modelos de **ollama local** (self-hosted) siempre cuentan como gratis.
+- **Proveedores sin precio en el catálogo**: algunos (ej. **ollama-cloud**, que es
+  pago por uso) traen `cost: 0` en el catálogo, lo que daría un 🌱 falso. Para esos,
+  `models-rank.json` tiene una sección **`costos`** curada a mano (precio de salida
+  por 1M de tokens, fuente: la página de precios del proveedor). Manda sobre el
+  catálogo. Ejemplo: `"ollama-cloud/kimi-k3": {"out": 15.00}`.
+- **Precio pico**: si un proveedor cobra distinto según la hora (ollama-cloud cobra
+  **×2** de 12:00 a 18:00 UTC, lunes a viernes), la entrada lleva `"peak": true` y el
+  nombre muestra el aviso **`(🕒🔥x2)`** al final. El precio mostrado es siempre el
+  estándar (fuera de pico); el aviso recuerda que en pico se duplica.
 - Los precios cambian con los proveedores: regenerá cuando quieras con
   `python3 ~/.config/opencode/bin/gen-modelos.py --apply`.
 

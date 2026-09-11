@@ -37,6 +37,8 @@ COST_EMOJI = ["🌱", "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "�
 MEDAL = {1: "🥇", 2: "🥈", 3: "🥉", 4: "🏅"}
 TIPO_EMOJI = {"chat": "", "embed": "🧩", "imagen": "🖼️", "audio": "🎙️", "otro": "🧩"}
 EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️💀"
+# Aviso de "precio pico x2" (ej. ollama-cloud 12-18 UTC lun-vie): reloj + fueguito.
+PEAK_MARK = "(🕒🔥x2)"
 
 
 def bin_opencode():
@@ -119,6 +121,8 @@ def cost_emoji(out):
 def strip_emojis(t):
     if not t:
         return ""
+    # quitar el aviso de precio pico (es texto, no emoji) antes de limpiar emojis
+    t = t.replace(PEAK_MARK, " ")
     t = re.sub(r"^[" + EMOJIS + r"\s]+", "", t).strip()
     t = re.sub(r"[" + EMOJIS + r"\s]+$", "", t).strip()
     return t
@@ -211,7 +215,7 @@ def main():
     except Exception:
         pass
 
-    rules = {"override": {}, "niveles": {}}
+    rules = {"override": {}, "niveles": {}, "costos": {}}
     try:
         rules = json.load(open(RULES, encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -219,6 +223,7 @@ def main():
     override = rules.get("override", {})
     niveles = rules.get("niveles", {})
     ocultar_patrones = rules.get("ocultar", []) or []
+    costos = rules.get("costos", {}) or {}
     muertos = cargar_muertos()
 
     config = {}
@@ -273,6 +278,16 @@ def main():
             if prov == "ollama":
                 cost_out = 0.0
 
+            # costo curado: para proveedores cuyo catálogo no publica precio por
+            # token (ej. ollama-cloud trae $0 aunque es pago). Manda sobre el catálogo.
+            peak = False
+            cur_cost = costos.get(full_id)
+            if isinstance(cur_cost, dict) and cur_cost.get("out") is not None:
+                cost_out = float(cur_cost["out"])
+                peak = bool(cur_cost.get("peak"))
+            elif isinstance(cur_cost, (int, float)) and not isinstance(cur_cost, bool):
+                cost_out = float(cur_cost)
+
             ceil = cost_emoji(cost_out)
             cur_name = modelos_config.get(cfg_key) if isinstance(modelos_config, dict) else None
             cur_name = cur_name.get("name") if isinstance(cur_name, dict) else None
@@ -285,6 +300,8 @@ def main():
                 continue
             prefijo = f"{star}{medalla}{tag}{ceil}".strip()
             name_final = (prefijo + " " + base).strip() if prefijo else base
+            if peak:
+                name_final = (name_final + " " + PEAK_MARK).strip()
 
             rows.append({
                 "provider": prov,
@@ -293,6 +310,7 @@ def main():
                 "name": name_final,
                 "nivel": nivel,
                 "cost_out": round(cost_out, 3) if cost_out is not None else None,
+                "peak": peak,
                 "contexto": ctx,
             })
 

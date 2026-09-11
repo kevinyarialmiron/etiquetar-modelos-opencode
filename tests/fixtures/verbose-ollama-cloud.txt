@@ -1,0 +1,30 @@
+ollama-cloud/kimi-k3
+{
+  "id": "kimi-k3",
+  "api": {"id": "kimi-k3", "npm": "@ai-sdk/openai-compatible", "url": "https://ollama.com/v1"},
+  "status": "active",
+  "name": "kimi-k3",
+  "providerID": "ollama-cloud",
+  "capabilities": {"temperature": true, "reasoning": true, "attachment": false, "toolcall": true,
+    "input": {"text": true, "audio": false, "image": false, "video": false, "pdf": false},
+    "output": {"text": true, "audio": false, "image": false, "video": false, "pdf": false},
+    "interleaved": {}},
+  "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+  "options": {}, "limit": {"context": 128000, "input": 128000, "output": 32000},
+  "headers": {}, "family": "kimi", "release_date": "2026-08-20", "variants": {}
+}
+ollama-cloud/deepseek-v4-pro
+{
+  "id": "deepseek-v4-pro",
+  "api": {"id": "deepseek-v4-pro", "npm": "@ai-sdk/openai-compatible", "url": "https://ollama.com/v1"},
+  "status": "active",
+  "name": "deepseek-v4-pro",
+  "providerID": "ollama-cloud",
+  "capabilities": {"temperature": true, "reasoning": true, "attachment": false, "toolcall": true,
+    "input": {"text": true, "audio": false, "image": false, "video": false, "pdf": false},
+    "output": {"text": true, "audio": false, "image": false, "video": false, "pdf": false},
+    "interleaved": {}},
+  "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+  "options": {}, "limit": {"context": 128000, "input": 128000, "output": 32000},
+  "headers": {}, "family": "deepseek-v4", "release_date": "2026-04-24", "variants": {}
+}

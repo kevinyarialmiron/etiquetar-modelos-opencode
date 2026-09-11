@@ -257,11 +257,42 @@ PY
 }
 
 # ----------------------------------------------------------------------------+
+# T10. costos curados: proveedor sin precio en el catálogo (ollama-cloud, que
+#      trae $0) usa el costo de models-rank.json; el aviso de pico (🕒🔥x2) se
+#      agrega y NO se duplica en un segundo apply
+# ----------------------------------------------------------------------------+
+t_costos_curados() {
+  local h; h=$(new_home costos); env_home "$h"
+  export SHIM_VERBOSE_FILE="$FIX/verbose-ollama-cloud.txt"
+  run_gen --apply >/dev/null 2>&1 || fail "apply #1 falló"
+  python3 - <<'PY' || fail "costos curados incorrectos"
+import json, os
+cfg = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))
+cm = cfg["provider"]["ollama-cloud"]["models"]
+# kimi-k3 $15 -> ❿❗ (NO 🌱)
+assert cm["kimi-k3"]["name"] == "⭐🥇❿❗ kimi-k3", cm["kimi-k3"]["name"]
+# deepseek-v4-pro $1.98 + peak -> ❶ + aviso (🕒🔥x2)
+assert cm["deepseek-v4-pro"]["name"] == "🥈❶ deepseek-v4-pro (🕒🔥x2)", cm["deepseek-v4-pro"]["name"]
+rows = {r["id"]: r for r in json.load(open(os.path.expanduser("~/.config/opencode/data/modelos.json")))["modelos"]}
+assert rows["ollama-cloud/kimi-k3"]["cost_out"] == 15.0
+assert rows["ollama-cloud/deepseek-v4-pro"]["peak"] is True
+PY
+  run_gen --apply >/dev/null 2>&1 || fail "apply #2 falló"
+  python3 - <<'PY' || fail "el aviso de pico se duplicó"
+import json, os
+cm = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))["provider"]["ollama-cloud"]["models"]
+n = cm["deepseek-v4-pro"]["name"]
+assert n.count("(🕒🔥x2)") == 1, n
+PY
+  return 0
+}
+
+# ----------------------------------------------------------------------------+
 # runner
 # ----------------------------------------------------------------------------+
 T_LIST="$@"
 if [ "$#" -eq 0 ]; then
-  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd t_muertos_multiprov"
+  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd t_muertos_multiprov t_costos_curados"
 fi
 
 for tname in $T_LIST; do

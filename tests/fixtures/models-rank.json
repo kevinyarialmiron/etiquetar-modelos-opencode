@@ -10,5 +10,9 @@
     "3": ["gemini-3-flash", "gemini-2\\.5-pro$", "nemotron-3\\.5"],
     "4": ["nemotron-3-ultra"]
   },
-  "ocultar": ["openrouter/.*/mistral-large-3\\.5"]
+  "ocultar": ["openrouter/.*/mistral-large-3\\.5"],
+  "costos": {
+    "ollama-cloud/kimi-k3": {"out": 15.0},
+    "ollama-cloud/deepseek-v4-pro": {"out": 1.98, "peak": true}
+  }
 }
