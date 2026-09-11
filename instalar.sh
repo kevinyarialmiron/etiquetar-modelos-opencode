@@ -53,6 +53,14 @@ warn() { echo "[instalar] AVISO: $*" >&2; }
 # --- preflight --------------------------------------------------------------
 command -v python3 >/dev/null 2>&1 || err "necesitás python3 para generar las etiquetas. Instalalo y reintentá."
 
+# dependencia de probe-nvidia.py / probe-proveedores.py (sondeo de muertos).
+# Mismas reglas que instalar.ps1: verificar, instalar si falta, avisar si no.
+if ! python3 -c "import requests" >/dev/null 2>&1; then
+  echo "[instalar] instalando dependencia 'requests' (para el sondeo de modelos muertos)..."
+  python3 -m pip install --quiet --disable-pip-version-check requests \
+    || warn "no se pudo instalar 'requests'; el sondeo de muertos no correra hasta instalarlo (python3 -m pip install requests)"
+fi
+
 # --- detección de opencode --------------------------------------------------
 # OC_KIND: linux | windows-wsl | missing
 OPENCODE_BIN=""
