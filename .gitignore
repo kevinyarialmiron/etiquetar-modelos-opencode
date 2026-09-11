@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 tests/tmp/
 tests/**/__pycache__/
+
+# datos generados por los sondeos y el --apply: probe-<prov>.json, modelos.json,
+# nvidia-muertos.json, etc. Son de cada máquina (resultado del sondeo de TU opencode),
+# no del repo. Los baselines versionados viven en files/ y tests/fixtures/.
+data/
