@@ -302,11 +302,43 @@ PY
 }
 
 # ----------------------------------------------------------------------------+
+# T11. "gratis: true" (gratis de hecho por free-tier): se muestra 🌱 aun teniendo
+#      precio real, que se conserva entre paréntesis y NO se duplica
+# ----------------------------------------------------------------------------+
+t_gratis_hecho() {
+  local h; h=$(new_home gratis); env_home "$h"
+  export SHIM_VERBOSE_FILE="$FIX/verbose-hf.txt"
+  run_gen --apply >/dev/null 2>&1 || fail "apply #1 falló"
+  python3 - <<'PY' || fail "gratis de hecho incorrecto"
+import json, os
+cfg = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))
+hf = cfg["provider"]["huggingface"]["models"]
+# gratis de hecho -> 🌱 + precio real entre paréntesis
+assert hf["deepseek-ai/DeepSeek-V4-Flash"]["name"] == "🥈🌱 DeepSeek V4 Flash ($0.28)", \
+    hf["deepseek-ai/DeepSeek-V4-Flash"]["name"]
+# costo curado pago (sin "gratis") -> 🪙 y NO lleva precio entre paréntesis
+assert hf["zai-org/GLM-4.7-Flash"]["name"] == "🪙 GLM-4.7-Flash", \
+    hf["zai-org/GLM-4.7-Flash"]["name"]
+rows = {r["id"]: r for r in json.load(open(os.path.expanduser("~/.config/opencode/data/modelos.json")))["modelos"]}
+# el dataset conserva el precio real (no lo fuerza a 0)
+assert rows["huggingface/deepseek-ai/DeepSeek-V4-Flash"]["cost_out"] == 0.28
+PY
+  run_gen --apply >/dev/null 2>&1 || fail "apply #2 falló"
+  python3 - <<'PY' || fail "el precio entre paréntesis se duplicó"
+import json, os
+hf = json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))["provider"]["huggingface"]["models"]
+n = hf["deepseek-ai/DeepSeek-V4-Flash"]["name"]
+assert n.count("($0.28)") == 1, n
+PY
+  return 0
+}
+
+# ----------------------------------------------------------------------------+
 # runner
 # ----------------------------------------------------------------------------+
 T_LIST="$@"
 if [ "$#" -eq 0 ]; then
-  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd t_muertos_multiprov t_costos_curados"
+  T_LIST="t_estaticos t_gen t_apply_ocultos t_idempotencia t_favoritos t_watch t_instalador t_modelos_cmd t_muertos_multiprov t_costos_curados t_gratis_hecho"
 fi
 
 for tname in $T_LIST; do

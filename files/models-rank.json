@@ -188,8 +188,17 @@
     ]
   },
   "costos": {
-    "_nota": "Costo curado (salida $/1M tokens) para proveedores cuyo catalogo publica $0 falso (ollama-cloud, algunos de huggingface). 'peak': true = cobra x2 en hora pico (12-18 UTC, lun-vie).",
+    "_nota": "Costo curado (salida $/1M tokens) para proveedores cuyo catalogo publica $0 falso (ollama-cloud, algunos de huggingface). 'peak': true = cobra x2 en hora pico (12-18 UTC, lun-vie). 'gratis': true = gratis de hecho (free-tier del proveedor); se muestra 🌱 y el precio real entre parentesis.",
     "huggingface/zai-org/GLM-4.7-Flash": {"out": 0.40},
+    "huggingface/deepseek-ai/DeepSeek-R1": {"out": 2.50, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-R1-0528": {"out": 5.00, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V3": {"out": 1.30, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V3-0324": {"out": 1.12, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V3.1": {"out": 1.00, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V3.2": {"out": 0.40, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V4-Flash": {"out": 0.28, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V4-Flash-0731": {"out": 0.28, "gratis": true},
+    "huggingface/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp": {"out": 1.32, "gratis": true},
     "ollama-cloud/deepseek-v4.1-flash": {"out": 0.60, "peak": true},
     "ollama-cloud/deepseek-v4-flash": {"out": 0.66, "peak": true},
     "ollama-cloud/deepseek-v4-flash:0731": {"out": 0.66, "peak": true},

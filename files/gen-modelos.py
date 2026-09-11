@@ -39,6 +39,16 @@ TIPO_EMOJI = {"chat": "", "embed": "🧩", "imagen": "🖼️", "audio": "🎙�
 EMOJIS = "⭐🥇🥈🥉🏅🌱🪙❶❷❸❹❺❻❼❽❾❗❿🧩🖼️🎙️💀"
 # Aviso de "precio pico x2" (ej. ollama-cloud 12-18 UTC lun-vie): reloj + fueguito.
 PEAK_MARK = "(🕒🔥x2)"
+# Sufijo de precio entre paréntesis: "($0.28)". Se usa para modelos "gratis de
+# hecho" (free-tier del proveedor) que conservan su precio real visible.
+PRICE_RE = re.compile(r"\(\$\d+(?:\.\d+)?\)\s*$")
+
+
+def fmt_precio(out):
+    """'0.28' -> '$0.28'; '2.5' -> '$2.50'. Siempre 2 decimales."""
+    if out is None:
+        return ""
+    return f"${float(out):.2f}"
 
 
 def bin_opencode():
@@ -121,8 +131,9 @@ def cost_emoji(out):
 def strip_emojis(t):
     if not t:
         return ""
-    # quitar el aviso de precio pico (es texto, no emoji) antes de limpiar emojis
+    # quitar el aviso de precio pico y/o el sufijo de precio (texto, no emoji)
     t = t.replace(PEAK_MARK, " ")
+    t = PRICE_RE.sub(" ", t)
     t = re.sub(r"^[" + EMOJIS + r"\s]+", "", t).strip()
     t = re.sub(r"[" + EMOJIS + r"\s]+$", "", t).strip()
     return t
@@ -280,15 +291,18 @@ def main():
 
             # costo curado: para proveedores cuyo catálogo no publica precio por
             # token (ej. ollama-cloud trae $0 aunque es pago). Manda sobre el catálogo.
+            # "gratis": true -> "gratis de hecho" (free-tier del proveedor): se
+            # muestra 🌱 aun teniendo precio real, que se conserva entre paréntesis.
             peak = False
+            gratis = False
             cur_cost = costos.get(full_id)
             if isinstance(cur_cost, dict) and cur_cost.get("out") is not None:
                 cost_out = float(cur_cost["out"])
                 peak = bool(cur_cost.get("peak"))
+                gratis = bool(cur_cost.get("gratis"))
             elif isinstance(cur_cost, (int, float)) and not isinstance(cur_cost, bool):
                 cost_out = float(cur_cost)
 
-            ceil = cost_emoji(cost_out)
             cur_name = modelos_config.get(cfg_key) if isinstance(modelos_config, dict) else None
             cur_name = cur_name.get("name") if isinstance(cur_name, dict) else None
             base = base_original(cfg_key, cur_name, name_by_meta)
@@ -298,8 +312,11 @@ def main():
             if oculto:
                 n_ocultos += 1
                 continue
+            ceil = "🌱" if gratis else cost_emoji(cost_out)
             prefijo = f"{star}{medalla}{tag}{ceil}".strip()
             name_final = (prefijo + " " + base).strip() if prefijo else base
+            if gratis and cost_out is not None:
+                name_final = f"{name_final} ({fmt_precio(cost_out)})".strip()
             if peak:
                 name_final = (name_final + " " + PEAK_MARK).strip()
 

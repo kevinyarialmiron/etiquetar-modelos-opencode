@@ -13,6 +13,8 @@
   "ocultar": ["openrouter/.*/mistral-large-3\\.5"],
   "costos": {
     "ollama-cloud/kimi-k3": {"out": 15.0},
-    "ollama-cloud/deepseek-v4-pro": {"out": 1.98, "peak": true}
+    "ollama-cloud/deepseek-v4-pro": {"out": 1.98, "peak": true},
+    "huggingface/zai-org/GLM-4.7-Flash": {"out": 0.40},
+    "huggingface/deepseek-ai/DeepSeek-V4-Flash": {"out": 0.28, "gratis": true}
   }
 }
