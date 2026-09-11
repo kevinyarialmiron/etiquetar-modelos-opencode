@@ -188,7 +188,8 @@
     ]
   },
   "costos": {
-    "_nota": "Costo curado (salida $/1M tokens) para proveedores cuyo catalogo no publica precio. Fuente: ollama.com/cloud. 'peak': true = cobra x2 en hora pico (12-18 UTC, lun-vie).",
+    "_nota": "Costo curado (salida $/1M tokens) para proveedores cuyo catalogo publica $0 falso (ollama-cloud, algunos de huggingface). 'peak': true = cobra x2 en hora pico (12-18 UTC, lun-vie).",
+    "huggingface/zai-org/GLM-4.7-Flash": {"out": 0.40},
     "ollama-cloud/deepseek-v4.1-flash": {"out": 0.60, "peak": true},
     "ollama-cloud/deepseek-v4-flash": {"out": 0.66, "peak": true},
     "ollama-cloud/deepseek-v4-flash:0731": {"out": 0.66, "peak": true},
