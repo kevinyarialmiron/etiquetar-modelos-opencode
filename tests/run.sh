@@ -34,16 +34,30 @@ for rel in ("files/models-rank.json", "files/nvidia-muertos.json", "tests/fixtur
             "tests/fixtures/nvidia-muertos.json", "tests/fixtures/opencode.json", "tests/fixtures/auth.json"):
     json.load(open(os.path.join(root, rel), encoding="utf-8"))
 PY
-  if [ -f "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then
+  # Validamos que instalar.ps1 siga siendo sintácticamente válido. Buscamos el
+  # PowerShell disponible: `pwsh` (el oficial moderno, presente en CI/runner), o
+  # `powershell.exe` (la ruta de WSL, /mnt/c/...). Si no hay ninguno, se salta.
+  local psbin=""
+  if command -v pwsh >/dev/null 2>&1; then
+    psbin="$(command -v pwsh)"
+  elif command -v powershell >/dev/null 2>&1; then
+    psbin="$(command -v powershell)"
+  elif [ -f "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then
+    psbin="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+  fi
+  if [ -n "$psbin" ]; then
     local pscp="$TMP/check-parse.ps1"
     local wpath
     cp "$REPO_ROOT/instalar.ps1" "$pscp"
-    wpath="$(cygpath -w "$pscp" 2>/dev/null || echo "$pscp")"
-    /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
-      -NoProfile -Command "[void][System.Management.Automation.Language.Parser]::ParseFile('$wpath',[ref]\$null,[ref]\$null)" \
-      || fail "parseo PS de instalar.ps1"
+    case "$psbin" in
+      /mnt/*) wpath="$(cygpath -w "$pscp" 2>/dev/null || echo "$pscp")" ;;
+      *) wpath="$pscp" ;;
+    esac
+    "$psbin" -NoProfile -Command \
+      "[void][System.Management.Automation.Language.Parser]::ParseFile('$wpath',[ref]\$null,[ref]\$null)" \
+      || fail "parseo PS de instalar.ps1 (via $psbin)"
   else
-    echo "  (sin powershell.exe; parseo PS salteado)"
+    echo "  (sin pwsh/powershell; parseo PS salteado)"
   fi
   return 0
 }
