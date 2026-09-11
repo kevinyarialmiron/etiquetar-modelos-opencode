@@ -14,10 +14,10 @@ Funciona en **Linux, macOS, WSL y Windows** (terminal y app de escritorio).
 - **Calidad**: ⭐🥇 nivel 1 (más confiable) · 🥈 nivel 2 · 🥉 nivel 3 · 🏅 nivel 4 · *sin medalla = evitar*.
 - **Costo** (salida por 1M tokens): 🌱 gratis · 🪙 centavos · ❶ $1-2 · ❷ $2-3 · … · ❺❗ $5-6 · ❿❗ ≥$10.
 - **Tipo**: 🧩 embed · 🖼️ imagen · 🎙️ audio (los de chat no llevan tag).
-- **Esconde modelos deprecados/muertos**: `probe-nvidia.py` sondea la API real de NVIDIA
-  (que en sus catálogos dice `active` hasta en los que ya no existen) y graba
-  `nvidia-muertos.json`. Esos modelos salen del listado, no se etiquetan, y en el
-  picker `/models` quedan marcados `💀 Nombre` (la calavera = no funciona).
+- **Esconde modelos deprecados/muertos**: `probe-proveedores.py` sondea la API real de
+  **cada proveedor** (no solo NVIDIA; el catálogo dice `active` hasta en los que ya no
+  existen) y graba `probe-<proveedor>.json`. Esos modelos salen del listado, no se
+  etiquetan, y en el picker `/models` quedan marcados `💀 Nombre` (la calavera = no funciona).
 - **Watcher automático**: si cambiás `auth.json`, `opencode.json` o `models-rank.json`,
   se regeneran las etiquetas solas (cron de Linux/WSL cada 5 min).
 - **`/modelos`**: un comando del TUI para listar modelos por calidad, precio o contexto.
@@ -144,25 +144,33 @@ ranking tienen prioridad sobre las etiquetas ya aplicadas, así el cambio se ref
 
 También podés **ocultar** modelos a mano agregando su ID (o un regex) a la sección
 `ocultar` de `models-rank.json` (ej. `"ocultar": ["openrouter/foo/bar-model"]`).
-Los modelos en `nvidia-muertos.json` se suman a esa lista automáticamente.
+Los modelos detectados como muertos por el sondeo se suman a esa lista automáticamente.
 
-### Sondeo de modelos NVIDIA deprecados
+### Sondeo de modelos deprecados/muertos (todos los proveedores)
 
-El catálogo de NVIDIA sale con `status: active` incluso en modelos que ya fueron
-retirados (410 `Gone` / 404). Para esconderlos:
+Muchos catálogos (sobre todo NVIDIA) listan modelos con `status: active` aunque ya
+fueron retirados (dan `410 Gone` / `404` al llamarlos). Para esconderlos:
 
 ```bash
-python3 ~/.config/opencode/bin/probe-nvidia.py        # solo chat (rápido, suficiente para el picker)
-python3 ~/.config/opencode/bin/probe-nvidia.py --todo # embeddings, imagen y audio también
+python3 ~/.config/opencode/bin/probe-proveedores.py                 # todos los proveedores (chat)
+python3 ~/.config/opencode/bin/probe-proveedores.py --prov openrouter   # un solo proveedor
 ```
 
-Usa la key de `~/.local/share/opencode/auth.json` (no la imprime), sondea cada modelo
-contra su endpoint real con un request mínimo y guarda `data/nvidia-muertos.json`.
-Un timeout nunca demuestra la muerte (cold start), por eso solo un 4xx definitivo
-esconde a un modelo ya confirmado. Si quedaron modelos marcados timeout/5xx y
-querés resolverlos con datos, corré `python3 ~/.config/opencode/bin/probe-nvidia.py
---dudosos` (los re-sondea con más paciencia; un 200 los pasa a vivos). Después
-corré `gen-modelos.py --apply`.
+Lee la key de cada proveedor en `~/.local/share/opencode/auth.json` (no la imprime),
+sondea cada modelo contra su endpoint real (usa `api.url`/`api.npm` que publica
+`opencode models --verbose`) y graba un `data/probe-<proveedor>.json` por proveedor.
+
+Reglas conservadoras (nunca marca un muerto de más):
+- `200` → vivo · `404/410` → muerto · `401/402/403/429` (auth/cuota/sin saldo) →
+  **no verificado** (se conserva el estado previo) · `timeout`/`5xx` → transitorio
+  (dudoso, no se esconde).
+
+Dos proveedores **no se sondean de forma confiable** desde fuera (su endpoint exige
+el contexto/sesión del propio opencode, o la URL del gateway es opaca): `vercel` y
+`opencode` (Zen). Se saltean para no producir muertes falsas. Si querés sondearlos,
+hacelo desde dentro de opencode (correr un request por cada modelo y ver el error).
+
+Después de sondear, corré `gen-modelos.py --apply` para reflejar los 💀.
 
 ### Watcher automático (Linux/macOS/WSL)
 
@@ -191,8 +199,9 @@ etiquetar-modelos-opencode/
     ├── modelos.sh            # backend del comando /modelos
     ├── ordenar-favoritos.sh  # wrapper del reorder de Favoritos
     ├── ordenar-favoritos.py  # reorder portable (Linux/macOS/Windows), solo lista favorite
-    ├── probe-nvidia.py       # sondea la API real de NVIDIA y escribe nvidia-muertos.json (--dudosos re-sondea timeout/5xx)
-    ├── nvidia-muertos.json   # baseline de NVIDIA que ya no responden (410/404; "timeout" = sin decidir)
+    ├── probe-nvidia.py       # sondeo específico de NVIDIA (legacy: sigue funcionando, chat/--todo/--dudosos)
+    ├── probe-proveedores.py  # sondeo generalizado (todos los proveedores, chat) -> data/probe-<prov>.json
+    ├── nvidia-muertos.json   # baseline legacy de NVIDIA que ya no responden (fallback si no hay probe-nvidia.json)
     ├── watch-etiquetas.sh    # watcher por cron (regenera si cambió algo relevante)
     └── commands-modelos.md   # definición del slash-command /modelos
 ```
@@ -231,12 +240,13 @@ y crea `commands/modelos.md`. Nunca lee ni escribe tokens.
 **¿Rompe algo?** No. Hace backup antes de aplicar y es idempotente: si lo volvés a
 correr, reemplaza los nombres sin duplicar prefijos.
 
-**¿Por qué algunos modelos de NVIDIA no se etiquetan / no aparecen en `/modelos`?**
-Porque ya no funcionan: el catálogo de OpenCode los lista como `active`, pero NVIDIA
-los retiró (dan `410 Gone` / `404` al llamarlos). `probe-nvidia.py` los detecta una
-vez por sondeo real y `nvidia-muertos.json` los esconde del listado y del etiquetado.
-En el picker `/models` quedan con el nombre marcado `💀` delante, para que se vea a
-simple vista que están fuera de servicio y no se confundan con los que funcionan.
+**¿Por qué algunos modelos no se etiquetan / no aparecen en `/modelos`?**
+Porque ya no funcionan: algunos catálogos de OpenCode los listan como `active`, pero
+el proveedor los retiró (dan `410 Gone` / `404` al llamarlos). `probe-proveedores.py`
+los detecta por sondeo real y los esconde del listado y del etiquetado. En el picker
+`/models` quedan con el nombre marcado `💀` delante, para que se vea a simple vista
+que están fuera de servicio y no se confundan con los que funcionan. (Los que no
+pudieron verificarse por falta de saldo del proveedor quedan intactos, sin `💀`.)
 
 **¿Por qué veo pocos modelos (ej. ~69 en vez de ~500)?** Suele pasar en WSL cuando
 el `opencode` del PATH es el de **Windows** (npm en `/mnt/c/...`): el catálogo sale

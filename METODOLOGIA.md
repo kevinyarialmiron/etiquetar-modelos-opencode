@@ -93,22 +93,36 @@ El campo `tipo` se guarda además en `data/modelos.json` y lo muestra `/modelos`
 
 ## Modelos muertos/deprecados: se ocultan y se marcan con 💀
 
-El catálogo de NVIDIA (`opencode models --verbose`) lista sus modelos con
-`status: active` **aún después de retirarlos**: al llamarlos dan `410 Gone`
-("end of life") o `404`. Una etiqueta bonita ahí sería una trampa. Por eso:
+Algunos catálogos (sobre todo NVIDIA) listan modelos con `status: active` **aún
+después de retirarlos**: al llamarlos dan `410 Gone` ("end of life") o `404`. Una
+etiqueta bonita ahí sería una trampa. Por eso:
 
-- `probe-nvidia.py` sondea la API real de NVIDIA con un request mínimo por modelo
-  (respeta la key de `~/.local/share/opencode/auth.json`, sin imprimirla) y guarda
-  el resultado en `~/.config/opencode/data/nvidia-muertos.json`.
-- `gen-modelos.py` **oculta** todo lo que está en ese archivo: no aparece en
+- `probe-proveedores.py` sondea la API real de **cada proveedor** con un request
+  mínimo por modelo (respeta la key de cada provider en
+  `~/.local/share/opencode/auth.json`, sin imprimirla) y guarda el resultado en
+  `~/.config/opencode/data/probe-<proveedor>.json`. Usa el `api.url`/`api.npm` que
+  publica `opencode models --verbose`, así que no requiere hardcodear endpoints por
+  proveedor (salvo los que no exponen URL, con una tabla corta en el propio script).
+- `gen-modelos.py` **oculta** todo lo que está en esos archivos: no aparece en
   `data/modelos.json` (ni en `/modelos` ni en Favoritos) y no se etiqueta. Además,
   en el picker `/models` **todo** modelo muerto se marca `💀 <nombre>` (se crea la
   entrada aunque no existiera antes), para que se vea a simple vista que está
   fuera de servicio y nunca se confunda con uno útil.
-- Regla de conservadurismo: un **timeout** (cold start de hasta 120-180 s en
-  NVIDIA) no degrada a un modelo ya confirmado vivo; solo un 4xx definitivo lo
-  esconde. Con `python3 bin/probe-nvidia.py --dudosos` los que quedaron marcados
-  timeout/5xx se re-sondean con más paciencia y se decide con datos (200 → vivo).
+- Regla de conservadurismo (nunca falso-muerto):
+  - `200` → vivo; `404/410` (o un `4xx` con pista inequívoca de "modelo retirado")
+    → muerto definitivo.
+  - `401/402/403/429` (auth, falta de saldo, cuota) → **no verificado**: se conserva
+    el estado previo y **nunca** se esconde un modelo por eso.
+  - `timeout`/`5xx` → transitorio: nunca esconde a un modelo antes vivo; si no hay
+    historial queda como "dudoso" (también sin esconder). Importante: **solo un 4xx
+    definitivo esconde**; un "timeout" jamás marca `💀`.
+  - Los "dudosos" de NVIDIA se pueden re-sondear con `python3 bin/probe-nvidia.py
+    --dudosos` (más paciencia; un 200 los pasa a vivos).
+- **No todos los proveedores se pueden sondear desde fuera**: `vercel` y `opencode`
+  (Zen) exigen el contexto/sesión del propio opencode (o una URL de gateway opaca),
+  así que se saltean para no producir muertes falsas. Esos modelos se dejan como
+  están (con su etiqueta de catálogo). Si querés "verificar" uno de esos en
+  particular, es más fiable correrle un request *desde* opencode y leer el error.
 - `models-rank.json` admite una sección `ocultar` con IDs exactos o regex para
   esconder modelos a mano (cualquier proveedor); esos también se marcan `💀`.
 

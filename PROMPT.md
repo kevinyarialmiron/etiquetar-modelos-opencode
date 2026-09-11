@@ -52,16 +52,17 @@ descrito abajo desde cero (también válido).
 costo (ej. `🥉🎙️❿❗ Gemini 2.5 Flash Preview TTS`). Se clasifica por las
 `capabilities` del catálogo.
 
-**Modelos muertos**: los que están en `data/nvidia-muertos.json` (generado por
-`bin/probe-nvidia.py`, que sondea la API real de NVIDIA) se **ocultan**: no salen
-en `data/modelos.json` ni se etiquetan; en el picker `/models` **todo** muerto se
-marca `💀 <nombre>` (se crea la entrada si no existía). Un timeout no mata a un
-modelo ya confirmado vivo (cold start); `--dudosos` re-sondea los timeout/5xx con
-paciencia y decide con datos. `models-rank.json` admite `ocultar` con IDs/regex
-para esconder a mano (esos también van con `💀`).
+**Modelos muertos**: los que están en `data/probe-<proveedor>.json` (generados por
+`bin/probe-proveedores.py`, que sondea la API real de cada proveedor) se **ocultan**:
+no salen en `data/modelos.json` ni se etiquetan; en el picker `/models` **todo**
+muerto se marca `💀 <nombre>` (se crea la entrada si no existía). Un timeout/5xx
+nunca mata a un modelo ya confirmado vivo, ni un `401/402/403/429` (sin saldo):
+solo un 4xx definitivo esconde. `vercel` y `opencode` no se sondean (endpoint/sesión
+no disponible desde fuera). `models-rank.json` admite `ocultar` con IDs/regex para
+esconder a mano (esos también van con `💀`).
 
 **Watcher**: `bin/watch-etiquetas.sh` (cron `*/5`) regenera `--apply` solo si cambió
-`auth.json`, `opencode.json`, `models-rank.json`, `nvidia-muertos.json` o el script.
+`auth.json`, `opencode.json`, `models-rank.json`, un `probe-*.json` o el script.
 
 **Fuente**: `opencode models --verbose` (IDs visibles + costos nativos por
 proveedor; ollama siempre gratis).
