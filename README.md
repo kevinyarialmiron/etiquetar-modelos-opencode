@@ -1,5 +1,7 @@
 # Etiquetar Modelos de OpenCode
 
+![tests](https://github.com/kevinyarialmiron/etiquetar-modelos-opencode/actions/workflows/tests.yml/badge.svg)
+
 Etiqueta automáticamente **todos los modelos** del selector `/models` de [OpenCode](https://opencode.ai)
 (los ~500 visibles: openrouter, opencode, opencode-go, google, deepseek, ollama,
 nvidia y cualquier proveedor que tu instancia autentique)
