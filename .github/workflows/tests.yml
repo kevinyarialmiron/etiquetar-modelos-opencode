@@ -15,10 +15,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Instalar PowerShell (para validar instalar.ps1)
-        uses: actions/setup-powershell@v1
-        with:
-          powershell-version: latest
-
       - name: Run de la suite de tests
         run: bash ./tests/run.sh
