@@ -44,6 +44,10 @@ TIMEOUT_CHAT = 30
 
 # Base-URLs para proveedores cuyo binario NO publica `api.url` (SDK nativo).
 # A todos se les agrega `/chat/completions` (formato OpenAI-compatible).
+# Nota: `vercel` y `cloudflare-ai-gateway` no se usan en esta config (se quitaron
+# de los proveedores activos), pero el soporte queda por si otro usuario los
+# autentica. `vercel` está en NO_PROBEAR igualmente: su endpoint exige el
+# contexto/sesión del propio opencode y no es verificable desde fuera.
 BASE_OVERRIDE = {
     "google": "https://generativelanguage.googleapis.com/v1beta/openai",
     "groq": "https://api.groq.com/openai/v1",
@@ -135,6 +139,7 @@ def provider_base(prov, meta, auth_provider):
         return url.rstrip("/")
     if prov == "cloudflare-ai-gateway":
         # el metadata.gatewayId trae la URL completa del gateway (con \n al final)
+        # (soporte opcional: cloudflare-ai-gateway no está en la config activa)
         meta_cf = (auth_provider or {}).get("metadata") or {}
         gw = (meta_cf.get("gatewayId") or "").strip()
         if gw:
